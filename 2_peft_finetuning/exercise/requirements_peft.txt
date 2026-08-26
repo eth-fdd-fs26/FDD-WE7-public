@@ -1,0 +1,7 @@
+# WE7 notebook 02 - parameter-efficient fine-tuning. CPU only: the model is a
+# 4482-parameter MLP and every experiment finishes in under a second.
+torch>=2.0
+numpy>=1.24
+matplotlib>=3.6
+scikit-learn>=1.2
+ipython>=8.0
