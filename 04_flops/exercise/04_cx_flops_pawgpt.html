@@ -1,0 +1,2632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PawGPT — FLOPs &amp; Scale Exercise</title>
+  <style>
+    :root {
+      --bg: #faf8f4;
+      --surface: #ffffff;
+      --ink: #1c1917;
+      --muted: #78716c;
+      --accent: #ea580c;
+      --accent-soft: #fff7ed;
+      --teal: #0d9488;
+      --teal-soft: #ecfdf5;
+      --purple: #7c3aed;
+      --purple-soft: #f5f3ff;
+      --border: #e7e5e4;
+      --success: #15803d;
+      --success-bg: #f0fdf4;
+      --warn: #b45309;
+      --warn-bg: #fffbeb;
+      --danger: #b91c1c;
+      --radius: 14px;
+      --shadow: 0 4px 24px rgba(28, 25, 23, 0.06);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+
+    header {
+      background: linear-gradient(135deg, #ea580c 0%, #c2410c 55%, #7c2d12 100%);
+      color: white;
+      padding: 2.5rem 1.5rem 2rem;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0 0 0.4rem;
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      letter-spacing: -0.02em;
+    }
+
+    header p {
+      margin: 0 auto;
+      max-width: 640px;
+      opacity: 0.92;
+      font-size: 1.05rem;
+    }
+
+    .emoji-bar { font-size: 1.6rem; margin-bottom: 0.6rem; }
+
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 1.5rem 1rem 4rem;
+    }
+
+    /* Progress */
+    .progress-wrap {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(250, 248, 244, 0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 0.75rem 1rem;
+      margin: 0 -1rem 1.5rem;
+    }
+
+    .progress-steps {
+      display: flex;
+      gap: 0.35rem;
+      max-width: 860px;
+      margin: 0 auto;
+      overflow-x: auto;
+    }
+
+    .step-dot {
+      flex: 1;
+      min-width: 72px;
+      text-align: center;
+      font-size: 0.72rem;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0.35rem 0.2rem;
+      border-radius: 8px;
+      transition: background 0.15s;
+    }
+
+    .step-dot:hover { background: var(--accent-soft); }
+
+    .step-dot.active { color: var(--accent); font-weight: 700; }
+    .step-dot.done { color: var(--success); }
+
+    .step-dot span {
+      display: block;
+      width: 28px;
+      height: 28px;
+      line-height: 28px;
+      border-radius: 50%;
+      background: var(--border);
+      margin: 0 auto 0.25rem;
+      font-weight: 700;
+      font-size: 0.8rem;
+    }
+
+    .step-dot.active span { background: var(--accent); color: white; }
+    .step-dot.done span { background: var(--success); color: white; }
+
+    /* Sections */
+    .section {
+      display: none;
+      animation: fadeIn 0.35s ease;
+    }
+
+    .section.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem 1.6rem;
+      margin-bottom: 1.25rem;
+      box-shadow: var(--shadow);
+    }
+
+    .card h2 {
+      margin: 0 0 0.75rem;
+      font-size: 1.35rem;
+      letter-spacing: -0.01em;
+    }
+
+    .card h3 {
+      margin: 1.25rem 0 0.5rem;
+      font-size: 1.05rem;
+      color: var(--purple);
+    }
+
+    .story {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      padding: 1rem 1.1rem;
+      border-radius: 0 var(--radius) var(--radius) 0;
+      margin-bottom: 1rem;
+      font-size: 0.98rem;
+    }
+
+    .formula-box {
+      background: var(--purple-soft);
+      border: 1px solid #ddd6fe;
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      margin: 1rem 0;
+      font-family: "Cambria Math", "Times New Roman", serif;
+      font-size: 1.05rem;
+      overflow-x: auto;
+    }
+
+    .hint {
+      background: var(--teal-soft);
+      border: 1px solid #99f6e4;
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      font-size: 0.92rem;
+      margin: 0.75rem 0;
+    }
+
+    .hint summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--teal);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+      margin: 0.75rem 0;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.7rem;
+      text-align: left;
+    }
+
+    th { background: #f5f5f4; font-weight: 600; }
+
+    .input-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      margin: 0.75rem 0;
+    }
+
+    label { font-size: 0.9rem; font-weight: 600; }
+
+    input[type="number"], input[type="text"], select {
+      padding: 0.5rem 0.65rem;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      min-width: 120px;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.15);
+    }
+
+    button, .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.55rem 1.1rem;
+      border: none;
+      border-radius: 9px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.15s;
+    }
+
+    button:active { transform: scale(0.98); }
+
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: #c2410c; }
+
+    .btn-secondary { background: #f5f5f4; color: var(--ink); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: #e7e5e4; }
+
+    .btn-teal { background: var(--teal); color: white; }
+    .btn-teal:hover { background: #0f766e; }
+
+    .feedback {
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      margin-top: 0.75rem;
+      font-size: 0.92rem;
+      display: none;
+    }
+
+    .feedback.show { display: block; }
+    .feedback.ok { background: var(--success-bg); color: var(--success); border: 1px solid #86efac; }
+    .feedback.err { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
+    .feedback.info { background: var(--warn-bg); color: var(--warn); border: 1px solid #fde68a; }
+
+    .nav-buttons {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .gpu-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+
+    .gpu-card {
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .gpu-card.locked { opacity: 0.65; }
+    .gpu-card.unlocked {
+      border-color: var(--success);
+      box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.12);
+    }
+
+    .gpu-card h4 { margin: 0 0 0.5rem; font-size: 1rem; }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .badge-locked { background: #f5f5f4; color: var(--muted); }
+    .badge-open { background: var(--success-bg); color: var(--success); }
+
+    .chart-bar-wrap { margin: 1rem 0; }
+
+    .chart-row {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin: 0.45rem 0;
+      font-size: 0.85rem;
+    }
+
+    .chart-label { width: 90px; text-align: right; color: var(--muted); flex-shrink: 0; }
+
+    .chart-track {
+      flex: 1;
+      height: 22px;
+      background: #f5f5f4;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .chart-fill {
+      height: 100%;
+      border-radius: 6px;
+      transition: width 0.5s ease;
+      min-width: 2px;
+    }
+
+    .chart-val { width: 70px; font-weight: 600; font-size: 0.82rem; }
+
+    /* Game dashboard */
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    .metric {
+      background: #fafaf9;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.85rem;
+      text-align: center;
+    }
+
+    .metric .val {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .metric .lbl {
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .metric.danger .val { color: var(--danger); }
+    .metric.ok-m .val { color: var(--success); }
+    .metric.warn-m .val { color: var(--warn); }
+
+    .slider-group { margin: 1.1rem 0; }
+
+    .slider-group label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.35rem;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .meter {
+      height: 12px;
+      background: #e7e5e4;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 0.35rem;
+    }
+
+    .meter-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.3s, background 0.3s;
+    }
+
+    .win-screen {
+      text-align: center;
+      padding: 2rem 1rem;
+    }
+
+    .win-screen .big { font-size: 3rem; }
+
+    .inline-code {
+      font-family: ui-monospace, monospace;
+      background: #f5f5f4;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      font-size: 0.88em;
+    }
+
+    .notation-box {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      font-size: 0.88rem;
+      margin: 1rem 0;
+    }
+
+    /* Centred display formulas with real fraction bars */
+    .formula-display {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.1rem;
+      padding: 1.35rem 1.2rem;
+      text-align: center;
+    }
+
+    .formula-item { width: 100%; }
+
+    .formula-label {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      font-size: 0.74rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .formula-eq {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.55rem;
+      font-size: 1.05rem;
+      color: #4c1d95;
+      line-height: 1.3;
+    }
+
+    .frac {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .frac .num { padding: 0 0.6rem 0.22rem; }
+
+    .frac .den {
+      padding: 0.22rem 0.6rem 0;
+      border-top: 1.5px solid #a78bfa;
+    }
+
+    .formula-note {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+    }
+
+    .formula-divider {
+      width: 60%;
+      height: 1px;
+      background: #ddd6fe;
+      border: 0;
+      margin: 0;
+    }
+
+    .def-list {
+      list-style: none;
+      margin: 0.75rem 0 0;
+      padding: 0;
+      font-size: 0.9rem;
+    }
+
+    .def-list li {
+      padding: 0.45rem 0 0.45rem 0.9rem;
+      border-left: 3px solid var(--teal);
+      margin-bottom: 0.5rem;
+      background: var(--teal-soft);
+      border-radius: 0 8px 8px 0;
+    }
+
+    .def-list li:last-child { margin-bottom: 0; }
+
+    .derive-step {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.1rem;
+      margin: 0.85rem 0;
+      background: #fafaf9;
+      transition: opacity 0.25s, border-color 0.25s;
+    }
+
+    .derive-step.locked {
+      opacity: 0.45;
+      pointer-events: none;
+    }
+
+    .derive-step.done {
+      border-color: #86efac;
+      background: var(--success-bg);
+    }
+
+    .derive-step .step-tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--purple);
+      margin-bottom: 0.35rem;
+    }
+
+    .derive-step.done .step-tag { color: var(--success); }
+
+    .result-banner {
+      display: none;
+      background: linear-gradient(135deg, var(--purple-soft), var(--teal-soft));
+      border: 2px solid var(--purple);
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      margin: 1rem 0;
+      text-align: center;
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .result-banner.show { display: block; }
+
+    /* Visualizations */
+    .viz-panel {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.1rem 0.85rem;
+      margin: 1rem 0;
+      overflow: hidden;
+    }
+
+    .viz-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 0.65rem;
+    }
+
+    .viz-caption {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin: 0.5rem 0 0;
+      text-align: center;
+      line-height: 1.45;
+    }
+
+    .viz-panel svg {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+    }
+
+    .viz-panel canvas {
+      display: block;
+      width: 100%;
+      border-radius: 8px;
+    }
+
+    .viz-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.65rem;
+      font-size: 0.88rem;
+    }
+
+    .viz-controls input[type="range"] { flex: 1; min-width: 120px; }
+
+    .viz-stat-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.65rem;
+    }
+
+    .viz-stat {
+      flex: 1;
+      min-width: 100px;
+      background: #fafaf9;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.45rem 0.6rem;
+      text-align: center;
+      font-size: 0.78rem;
+    }
+
+    .viz-stat strong {
+      display: block;
+      font-size: 1rem;
+      color: var(--ink);
+    }
+
+    .viz-two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    @media (max-width: 640px) {
+      .viz-two-col { grid-template-columns: 1fr; }
+    }
+
+    .derive-step .viz-panel {
+      margin: 0.75rem 0 0;
+      background: #fff;
+    }
+
+    .worked-example {
+      background: #fafaf9;
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+      font-size: 0.9rem;
+      margin: 0.75rem 0;
+    }
+
+    .worked-example ol { margin: 0.5rem 0 0; padding-left: 1.2rem; }
+    .worked-example li { margin: 0.35rem 0; }
+
+    @media (max-width: 600px) {
+      .card { padding: 1.1rem; }
+      .nav-buttons { flex-direction: column; }
+    }
+
+    /* Floating calculator */
+    .calc-fab {
+      position: fixed;
+      right: 1.1rem;
+      bottom: 1.1rem;
+      z-index: 200;
+      height: 52px;
+      padding: 0 1.1rem 0 0.95rem;
+      border-radius: 999px;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(194, 65, 12, 0.35);
+      transition: transform 0.15s, background 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      letter-spacing: 0.01em;
+    }
+    .calc-fab .calc-fab-icon {
+      font-size: 1.25rem;
+      line-height: 1;
+    }
+    .calc-fab:hover { background: #c2410c; transform: scale(1.03); }
+    .calc-fab.open { background: #78716c; }
+
+    .calc-panel {
+      position: fixed;
+      right: 1.1rem;
+      bottom: 5rem;
+      z-index: 200;
+      width: min(300px, calc(100vw - 2rem));
+      background: #1c1917;
+      color: #fafaf9;
+      border-radius: 16px;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.28);
+      padding: 0.85rem;
+      display: none;
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    }
+    .calc-panel.open { display: block; animation: fadeIn 0.2s ease; }
+
+    .calc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #a8a29e;
+    }
+    .calc-header button {
+      background: transparent;
+      border: none;
+      color: #a8a29e;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0.15rem 0.4rem;
+    }
+
+    .calc-display {
+      background: #292524;
+      border-radius: 10px;
+      padding: 0.65rem 0.75rem;
+      margin-bottom: 0.65rem;
+      text-align: right;
+      min-height: 3.4rem;
+      word-break: break-all;
+    }
+    .calc-expr {
+      font-size: 0.75rem;
+      color: #a8a29e;
+      min-height: 1rem;
+    }
+    .calc-value {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.02em;
+    }
+
+    .calc-keys {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.4rem;
+    }
+    .calc-keys button {
+      border: none;
+      border-radius: 10px;
+      padding: 0.72rem 0;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: #44403c;
+      color: #fafaf9;
+      font-family: inherit;
+      transition: background 0.1s;
+    }
+    .calc-keys button:hover { background: #57534e; }
+    .calc-keys button:active { background: #78716c; }
+    .calc-keys .op { background: #44403c; color: #fdba74; }
+    .calc-keys .fn { background: #292524; color: #a8a29e; font-size: 0.85rem; }
+    .calc-keys .eq { background: var(--accent); color: #fff; }
+    .calc-keys .eq:hover { background: #c2410c; }
+    .calc-keys .span2 { grid-column: span 2; }
+
+    .calc-hint {
+      margin-top: 0.5rem;
+      font-size: 0.68rem;
+      color: #78716c;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      line-height: 1.35;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="emoji-bar">🐕 🐈 🦴</div>
+  <h1>PawGPT: LLMs for Pets</h1>
+  <p>You woke up realizing humans hog all the LLMs — pets deserve their own! Build, budget, and scale a model that speaks fluent woof &amp; meow.</p>
+</header>
+
+<main>
+  <div class="progress-wrap">
+    <div class="progress-steps" id="progressSteps"></div>
+  </div>
+
+  <!-- STEP 0: Intro -->
+  <section class="section active" id="step-0" data-step="0">
+    <div class="card">
+      <h2>Welcome, founder!</h2>
+      <div class="story">
+        Every LLM today is trained on human text. But dogs bark, cats meow, and neither cares about tax law.
+        You've decided to launch <strong>PawGPT</strong> — the first large language model for pets.
+      </div>
+      <p>Three knobs control how <em>smart</em> your model feels — and how much math it needs:</p>
+      <table>
+        <tr><th>Symbol</th><th>What it means</th></tr>
+        <tr><td><strong style="color:#7c3aed;">N</strong> (parameters)</td><td>Total learnable weights in the model</td></tr>
+        <tr><td><strong style="color:#ea580c;">T</strong> (sequence length)</td><td>How many tokens fit in one conversation at once</td></tr>
+        <tr><td><strong style="color:#0d9488;">L</strong> (layers)</td><td>How many times the model refines its understanding</td></tr>
+      </table>
+
+      <div class="viz-panel" id="introVizTransformer">
+        <div class="viz-title">Visualization — where N, T and L live in a transformer</div>
+        <svg viewBox="0 0 660 440" xmlns="http://www.w3.org/2000/svg" aria-label="Transformer diagram: T tokens enter at the bottom, pass through L stacked blocks whose weight matrices together make up N parameters">
+          <!-- Output -->
+          <rect x="170" y="16" width="340" height="28" fill="#fafaf9" stroke="#d6d3d1" stroke-width="1.5" rx="8"/>
+          <text x="340" y="35" font-size="11" fill="#57534e" text-anchor="middle">next-token prediction 🦴 (&quot;walk?&quot;)</text>
+          <line x1="340" y1="58" x2="340" y2="52" stroke="#a8a29e" stroke-width="1.6"/>
+          <polygon points="335,52 340,44 345,52" fill="#a8a29e"/>
+
+          <!-- Block: layer L -->
+          <rect x="170" y="58" width="340" height="76" fill="#f0fdfa" stroke="#0d9488" stroke-width="1.6" rx="10"/>
+          <text x="182" y="74" font-size="10" fill="#0f766e" font-weight="700">transformer block — layer L</text>
+          <rect x="182" y="82" width="150" height="42" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.4" rx="6"/>
+          <text x="257" y="99" font-size="11" fill="#7c3aed" font-weight="700" text-anchor="middle">self-attention</text>
+          <text x="257" y="115" font-size="9.5" fill="#78716c" text-anchor="middle">W<tspan font-size="7" dy="2">Q</tspan><tspan dy="-2"> W</tspan><tspan font-size="7" dy="2">K</tspan><tspan dy="-2"> W</tspan><tspan font-size="7" dy="2">V</tspan><tspan dy="-2"> W</tspan><tspan font-size="7" dy="2">O</tspan></text>
+          <polygon points="336,98 346,103 336,108" fill="#a8a29e"/>
+          <rect x="350" y="82" width="148" height="42" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.4" rx="6"/>
+          <text x="424" y="99" font-size="11" fill="#7c3aed" font-weight="700" text-anchor="middle">feed-forward</text>
+          <text x="424" y="115" font-size="9.5" fill="#78716c" text-anchor="middle">W₁  W₂</text>
+
+          <!-- Skipped middle layers -->
+          <text x="340" y="159" font-size="20" fill="#a8a29e" text-anchor="middle">⋮</text>
+
+          <!-- Block: layer 2 -->
+          <rect x="170" y="164" width="340" height="76" fill="#f0fdfa" stroke="#0d9488" stroke-width="1.6" rx="10"/>
+          <text x="182" y="180" font-size="10" fill="#0f766e" font-weight="700">transformer block — layer 2</text>
+          <rect x="182" y="188" width="150" height="42" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.4" rx="6"/>
+          <text x="257" y="205" font-size="11" fill="#7c3aed" font-weight="700" text-anchor="middle">self-attention</text>
+          <text x="257" y="221" font-size="9.5" fill="#78716c" text-anchor="middle">W<tspan font-size="7" dy="2">Q</tspan><tspan dy="-2"> W</tspan><tspan font-size="7" dy="2">K</tspan><tspan dy="-2"> W</tspan><tspan font-size="7" dy="2">V</tspan><tspan dy="-2"> W</tspan><tspan font-size="7" dy="2">O</tspan></text>
+          <polygon points="336,204 346,209 336,214" fill="#a8a29e"/>
+          <rect x="350" y="188" width="148" height="42" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.4" rx="6"/>
+          <text x="424" y="205" font-size="11" fill="#7c3aed" font-weight="700" text-anchor="middle">feed-forward</text>
+          <text x="424" y="221" font-size="9.5" fill="#78716c" text-anchor="middle">W₁  W₂</text>
+
+          <line x1="340" y1="254" x2="340" y2="246" stroke="#a8a29e" stroke-width="1.6"/>
+          <polygon points="335,247 340,240 345,247" fill="#a8a29e"/>
+
+          <!-- Block: layer 1 -->
+          <rect x="170" y="254" width="340" height="76" fill="#f0fdfa" stroke="#0d9488" stroke-width="1.6" rx="10"/>
+          <text x="182" y="270" font-size="10" fill="#0f766e" font-weight="700">transformer block — layer 1</text>
+          <rect x="182" y="278" width="150" height="42" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.4" rx="6"/>
+          <text x="257" y="295" font-size="11" fill="#7c3aed" font-weight="700" text-anchor="middle">self-attention</text>
+          <text x="257" y="311" font-size="9.5" fill="#78716c" text-anchor="middle">W<tspan font-size="7" dy="2">Q</tspan><tspan dy="-2"> W</tspan><tspan font-size="7" dy="2">K</tspan><tspan dy="-2"> W</tspan><tspan font-size="7" dy="2">V</tspan><tspan dy="-2"> W</tspan><tspan font-size="7" dy="2">O</tspan></text>
+          <polygon points="336,294 346,299 336,304" fill="#a8a29e"/>
+          <rect x="350" y="278" width="148" height="42" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.4" rx="6"/>
+          <text x="424" y="295" font-size="11" fill="#7c3aed" font-weight="700" text-anchor="middle">feed-forward</text>
+          <text x="424" y="311" font-size="9.5" fill="#78716c" text-anchor="middle">W₁  W₂</text>
+
+          <!-- L brace -->
+          <path d="M524 58 q6 0 6 8 v118 q0 8 8 10 q-8 2 -8 10 v118 q0 8 -6 8" fill="none" stroke="#0d9488" stroke-width="1.6"/>
+          <text x="546" y="192" font-size="17" fill="#0d9488" font-weight="700">L</text>
+          <text x="546" y="210" font-size="10.5" fill="#78716c">layers</text>
+          <text x="546" y="225" font-size="10.5" fill="#78716c">(depth)</text>
+
+          <!-- N callout -->
+          <rect x="6" y="140" width="150" height="104" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.4" rx="8"/>
+          <text x="16" y="161" font-size="12" fill="#7c3aed" font-weight="700">N = parameters</text>
+          <text x="16" y="181" font-size="10.5" fill="#57534e">Every weight cell inside</text>
+          <text x="16" y="197" font-size="10.5" fill="#57534e">every attention and</text>
+          <text x="16" y="213" font-size="10.5" fill="#57534e">feed-forward matrix —</text>
+          <text x="16" y="229" font-size="10.5" fill="#57534e">summed over all L blocks.</text>
+          <line x1="156" y1="205" x2="176" y2="205" stroke="#7c3aed" stroke-width="1.3" stroke-dasharray="4 3"/>
+          <polygon points="176,201 183,205 176,209" fill="#7c3aed"/>
+
+          <!-- Token sequence -->
+          <line x1="340" y1="358" x2="340" y2="344" stroke="#a8a29e" stroke-width="1.6"/>
+          <polygon points="335,345 340,336 345,345" fill="#a8a29e"/>
+          <text x="354" y="352" font-size="9.5" fill="#78716c">all T tokens enter together</text>
+
+          <rect x="171" y="358" width="58" height="36" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5" rx="6"/>
+          <text x="200" y="375" font-size="10.5" fill="#9a3412" text-anchor="middle">woof</text>
+          <text x="200" y="388" font-size="8.5" fill="#a8a29e" text-anchor="middle">t₁</text>
+
+          <rect x="241" y="358" width="58" height="36" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5" rx="6"/>
+          <text x="270" y="375" font-size="10.5" fill="#9a3412" text-anchor="middle">meow</text>
+          <text x="270" y="388" font-size="8.5" fill="#a8a29e" text-anchor="middle">t₂</text>
+
+          <rect x="311" y="358" width="58" height="36" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5" rx="6"/>
+          <text x="340" y="375" font-size="10.5" fill="#9a3412" text-anchor="middle">woof</text>
+          <text x="340" y="388" font-size="8.5" fill="#a8a29e" text-anchor="middle">t₃</text>
+
+          <rect x="381" y="358" width="58" height="36" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5" rx="6" stroke-dasharray="5 4"/>
+          <text x="410" y="379" font-size="13" fill="#c2410c" text-anchor="middle">⋯</text>
+
+          <rect x="451" y="358" width="58" height="36" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5" rx="6"/>
+          <text x="480" y="375" font-size="10.5" fill="#9a3412" text-anchor="middle">grrr</text>
+          <text x="480" y="388" font-size="8.5" fill="#a8a29e" text-anchor="middle">t<tspan font-size="7" dy="1.5">T</tspan></text>
+
+          <!-- T brace -->
+          <path d="M171 402 q0 6 8 6 h153 q8 0 8 6 q0 -6 8 -6 h153 q8 0 8 -6" fill="none" stroke="#ea580c" stroke-width="1.6"/>
+          <text x="340" y="431" font-size="11.5" fill="#57534e" text-anchor="middle">
+            <tspan fill="#ea580c" font-weight="700">T</tspan> tokens read at once — the sequence length
+          </text>
+        </svg>
+        <p class="viz-caption"><strong style="color:#ea580c;">T</strong> tokens go in at the bottom and travel up through <strong style="color:#0d9488;">L</strong> identical blocks; the weights in every block add up to <strong style="color:#7c3aed;">N</strong>. Cost grows with all three.</p>
+      </div>
+
+      <p>In the next two sections you will <strong>derive from scratch</strong> the two formulas that govern training cost:</p>
+      <div class="formula-box" style="font-size:0.95rem;">
+        Linear cost (full training):&nbsp; 6 · N · T<sub>train</sub><br>
+        Attention cost (per sequence):&nbsp; 12 · L · d · T² &nbsp;(T = context length)
+      </div>
+      <p>Behind the scenes, all of this boils down to one question: <strong>how much math (FLOPs) can you afford?</strong></p>
+      <p>This exercise walks you through the math — step by step — then lets you unlock GPUs, scale up, and finally pitch investors.</p>
+      <div class="nav-buttons">
+        <span></span>
+        <button class="btn-primary" onclick="goToStep(1)">Start learning →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 1: Linear → 6ND derivation -->
+  <section class="section" id="step-1" data-step="1">
+    <div class="card">
+      <h2>Part 1a — Deriving 6 · N · T</h2>
+      <div class="story">
+        Most of PawGPT's compute is plain matrix multiplication. Let's build up to the full training formula one question at a time.
+      </div>
+
+      <div class="notation-box">
+        <strong>Notation:</strong> <strong>N</strong> = total parameters &nbsp;|&nbsp; <strong>d</strong> = layer width &nbsp;|&nbsp; <strong>T</strong> = total training tokens (all woofs + meows in the dataset)
+      </div>
+
+      <p>Every linear layer multiplies an input vector by a weight matrix. One multiply-add = <strong>2 FLOPs</strong> (one multiply + one add):</p>
+      <div class="formula-box">FLOPs (one linear layer, one token) = 2 × input_size × output_size</div>
+
+      <div class="viz-panel" id="linVizMatmul">
+        <div class="viz-title">Visualization — from one linear layer to 2N</div>
+        <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" aria-label="Linear layer: d-vector times d-by-d matrix gives 2N forward FLOPs">
+          <!-- Input vector x (d) -->
+          <text x="48" y="22" font-size="12" fill="#78716c" font-weight="700" text-anchor="middle">input x</text>
+          <text x="48" y="38" font-size="11" fill="#ea580c" text-anchor="middle">d × 1</text>
+          <rect x="28" y="48" width="40" height="140" fill="#fff7ed" stroke="#ea580c" stroke-width="2" rx="4"/>
+          <line x1="32" y1="72" x2="64" y2="72" stroke="#fdba74" stroke-width="1"/>
+          <line x1="32" y1="96" x2="64" y2="96" stroke="#fdba74" stroke-width="1"/>
+          <line x1="32" y1="120" x2="64" y2="120" stroke="#fdba74" stroke-width="1"/>
+          <line x1="32" y1="144" x2="64" y2="144" stroke="#fdba74" stroke-width="1"/>
+          <line x1="32" y1="168" x2="64" y2="168" stroke="#fdba74" stroke-width="1"/>
+          <text x="48" y="205" font-size="11" fill="#78716c" text-anchor="middle">d entries</text>
+
+          <text x="90" y="125" font-size="26" fill="#78716c" text-anchor="middle">×</text>
+
+          <!-- Weight matrix W (d × d) -->
+          <text x="180" y="22" font-size="12" fill="#78716c" font-weight="700" text-anchor="middle">weights W</text>
+          <text x="180" y="38" font-size="11" fill="#7c3aed" text-anchor="middle">d × d</text>
+          <rect x="110" y="48" width="140" height="140" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2" rx="4"/>
+          <!-- grid lines -->
+          <g stroke="#c4b5fd" stroke-width="0.8">
+            <line x1="145" y1="48" x2="145" y2="188"/><line x1="180" y1="48" x2="180" y2="188"/><line x1="215" y1="48" x2="215" y2="188"/>
+            <line x1="110" y1="83" x2="250" y2="83"/><line x1="110" y1="118" x2="250" y2="118"/><line x1="110" y1="153" x2="250" y2="153"/>
+          </g>
+          <text x="180" y="125" font-size="13" fill="#7c3aed" font-weight="700" text-anchor="middle">N = d²</text>
+          <text x="180" y="143" font-size="10" fill="#78716c" text-anchor="middle">parameters</text>
+          <text x="180" y="205" font-size="11" fill="#78716c" text-anchor="middle">d² weight cells</text>
+
+          <text x="278" y="125" font-size="26" fill="#78716c" text-anchor="middle">=</text>
+
+          <!-- Output vector y (d) -->
+          <text x="328" y="22" font-size="12" fill="#78716c" font-weight="700" text-anchor="middle">output y</text>
+          <text x="328" y="38" font-size="11" fill="#0d9488" text-anchor="middle">d × 1</text>
+          <rect x="308" y="48" width="40" height="140" fill="#ecfdf5" stroke="#0d9488" stroke-width="2" rx="4"/>
+          <line x1="312" y1="72" x2="344" y2="72" stroke="#5eead4" stroke-width="1"/>
+          <line x1="312" y1="96" x2="344" y2="96" stroke="#5eead4" stroke-width="1"/>
+          <line x1="312" y1="120" x2="344" y2="120" stroke="#5eead4" stroke-width="1"/>
+          <line x1="312" y1="144" x2="344" y2="144" stroke="#5eead4" stroke-width="1"/>
+          <line x1="312" y1="168" x2="344" y2="168" stroke="#5eead4" stroke-width="1"/>
+          <text x="328" y="205" font-size="11" fill="#78716c" text-anchor="middle">d entries</text>
+
+          <!-- Counting box -->
+          <rect x="380" y="42" width="240" height="168" fill="#fafaf9" stroke="#d6d3d1" stroke-width="1.5" rx="10"/>
+          <text x="500" y="68" font-size="12" fill="#57534e" font-weight="700" text-anchor="middle">Count the FLOPs</text>
+          <text x="400" y="98" font-size="12" fill="#78716c">Each of the <tspan fill="#7c3aed" font-weight="700">d²</tspan> weights does</text>
+          <text x="400" y="118" font-size="12" fill="#78716c">one multiply + one add</text>
+          <text x="400" y="138" font-size="12" fill="#78716c">= <tspan fill="#ea580c" font-weight="700">2 FLOPs</tspan> per parameter</text>
+          <line x1="400" y1="152" x2="600" y2="152" stroke="#e7e5e4"/>
+          <text x="500" y="176" font-size="14" fill="#7c3aed" font-weight="700" text-anchor="middle">FLOPs = 2 × d² = 2N</text>
+          <text x="500" y="196" font-size="11" fill="#78716c" text-anchor="middle">forward pass, one token, one layer</text>
+
+          <!-- Bottom bridge to full model -->
+          <text x="320" y="248" font-size="12" fill="#57534e" text-anchor="middle">
+            Sum over all layers: total parameters still called <tspan fill="#7c3aed" font-weight="700">N</tspan> → forward FLOPs ≈ <tspan fill="#7c3aed" font-weight="700">2N</tspan> per token
+          </text>
+        </svg>
+        <p class="viz-caption">A d×d weight matrix has N = d² parameters. Each is used once in a multiply-add → <strong>2N</strong> FLOPs for the forward pass.</p>
+      </div>
+
+      <!-- Q1 -->
+      <div class="derive-step" id="lin-q1">
+        <div class="step-tag">Question 1 of 5</div>
+        <p>A single PawGPT layer has width <strong>d = 512</strong>. One token passes through one <strong>d × d</strong> linear layer. How many FLOPs?</p>
+        <p style="font-size:0.9rem; color:var(--muted);">Hint: input_size = output_size = d, so FLOPs = 2 × d × d</p>
+        <div class="input-row">
+          <input type="number" id="linA1" placeholder="FLOPs">
+          <button class="btn-primary" onclick="checkLinQ(1)">Check</button>
+        </div>
+        <div class="feedback" id="linF1"></div>
+      </div>
+
+      <!-- Q2 -->
+      <div class="derive-step locked" id="lin-q2">
+        <div class="step-tag">Question 2 of 5</div>
+        <p>A full transformer has about <strong>N</strong> parameters total. In the <strong>forward pass</strong>, each parameter is used in roughly one multiply-add per token. So forward FLOPs per token ≈ ?</p>
+        <div class="input-row">
+          <select id="linA2">
+            <option value="">Choose…</option>
+            <option value="N">N</option>
+            <option value="2N">2N</option>
+            <option value="6N">6N</option>
+          </select>
+          <button class="btn-primary" onclick="checkLinQ(2)">Check</button>
+        </div>
+        <div class="feedback" id="linF2"></div>
+      </div>
+
+      <div class="viz-panel" id="linVizBackward">
+        <div class="viz-title">Visualization — backward pass costs ~2× forward</div>
+        <svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" aria-label="Backward pass: two gradient computations each cost about 2N">
+          <!-- Forward arrow (reference) -->
+          <rect x="20" y="20" width="180" height="70" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.5" rx="8"/>
+          <text x="110" y="48" font-size="12" fill="#7c3aed" font-weight="700" text-anchor="middle">Forward (reminder)</text>
+          <text x="110" y="70" font-size="13" fill="#57534e" text-anchor="middle">y = W x &nbsp;→&nbsp; <tspan fill="#7c3aed" font-weight="700">2N</tspan></text>
+
+          <text x="230" y="58" font-size="22" fill="#a8a29e">→</text>
+
+          <!-- Backward: two jobs -->
+          <rect x="260" y="12" width="360" height="220" fill="#f0fdf4" stroke="#0d9488" stroke-width="1.5" rx="10"/>
+          <text x="440" y="36" font-size="13" fill="#0d9488" font-weight="700" text-anchor="middle">Backward pass — two jobs</text>
+
+          <!-- Job 1: grad w.r.t. input -->
+          <rect x="280" y="52" width="150" height="100" fill="#fff" stroke="#14b8a6" stroke-width="1.5" rx="8"/>
+          <text x="355" y="76" font-size="11" fill="#0f766e" font-weight="700" text-anchor="middle">① Gradients for x</text>
+          <text x="355" y="98" font-size="11" fill="#57534e" text-anchor="middle">∂L/∂x = Wᵀ (∂L/∂y)</text>
+          <text x="355" y="118" font-size="10" fill="#78716c" text-anchor="middle">same size matmul as fwd</text>
+          <text x="355" y="138" font-size="13" fill="#0d9488" font-weight="700" text-anchor="middle">≈ 2N FLOPs</text>
+
+          <!-- Job 2: grad w.r.t. weights -->
+          <rect x="450" y="52" width="150" height="100" fill="#fff" stroke="#14b8a6" stroke-width="1.5" rx="8"/>
+          <text x="525" y="76" font-size="11" fill="#0f766e" font-weight="700" text-anchor="middle">② Gradients for W</text>
+          <text x="525" y="98" font-size="11" fill="#57534e" text-anchor="middle">∂L/∂W = (∂L/∂y) xᵀ</text>
+          <text x="525" y="118" font-size="10" fill="#78716c" text-anchor="middle">also ~same matmul cost</text>
+          <text x="525" y="138" font-size="13" fill="#0d9488" font-weight="700" text-anchor="middle">≈ 2N FLOPs</text>
+
+          <!-- Sum -->
+          <text x="440" y="182" font-size="14" fill="#0d9488" font-weight="700" text-anchor="middle">① + ② ≈ 2N + 2N = 4N</text>
+          <text x="440" y="206" font-size="12" fill="#57534e" text-anchor="middle">Backward ≈ <tspan fill="#0d9488" font-weight="700">2 ×</tspan> forward ≈ <tspan fill="#0d9488" font-weight="700">4N</tspan> FLOPs per token</text>
+        </svg>
+        <p class="viz-caption">Training must push errors back to both the inputs <em>and</em> the weights — two matmuls, each ~as expensive as the forward pass → <strong>4N</strong>.</p>
+      </div>
+
+      <!-- Q3 -->
+      <div class="derive-step locked" id="lin-q3">
+        <div class="step-tag">Question 3 of 5</div>
+        <p><strong>Backpropagation</strong> (computing gradients) costs about <strong>twice</strong> the forward pass. Backward FLOPs per token ≈ ?</p>
+        <div class="input-row">
+          <select id="linA3">
+            <option value="">Choose…</option>
+            <option value="2N">2N</option>
+            <option value="4N">4N</option>
+            <option value="6N">6N</option>
+          </select>
+          <button class="btn-primary" onclick="checkLinQ(3)">Check</button>
+        </div>
+        <div class="feedback" id="linF3"></div>
+      </div>
+
+      <!-- Q4 -->
+      <div class="derive-step locked" id="lin-q4">
+        <div class="step-tag">Question 4 of 5</div>
+        <p>Add forward + backward for <strong>one token</strong>. Total training FLOPs per token = ?</p>
+        <div class="input-row">
+          <select id="linA4">
+            <option value="">Choose…</option>
+            <option value="2N">2N</option>
+            <option value="4N">4N</option>
+            <option value="6N">6N</option>
+            <option value="8N">8N</option>
+          </select>
+          <button class="btn-primary" onclick="checkLinQ(4)">Check</button>
+        </div>
+        <div class="feedback" id="linF4"></div>
+      </div>
+
+      <!-- Q5 -->
+      <div class="derive-step locked" id="lin-q5">
+        <div class="step-tag">Question 5 of 5 — put it together</div>
+        <p>You train on <strong>T</strong> tokens total. Multiply per-token cost by T to get the full training FLOPs formula. What is the coefficient?</p>
+        <div class="input-row">
+          <label>Training FLOPs =</label>
+          <input type="number" id="linA5coef" placeholder="?" style="width:60px; min-width:60px;">
+          <span>× N × T</span>
+          <button class="btn-primary" onclick="checkLinQ(5)">Check</button>
+        </div>
+        <div class="feedback" id="linF5"></div>
+      </div>
+
+      <div class="result-banner" id="linResult">
+        ✓ &nbsp; Training FLOPs ≈ <strong>6 · N · T</strong> &nbsp; (T = total training tokens)
+      </div>
+
+      <details class="hint">
+        <summary>Full derivation recap</summary>
+        One linear layer: 2d² → whole model forward: 2N/token → backward: 4N/token → sum: 6N/token → over T training tokens: <strong>6NT</strong>.
+      </details>
+
+      <div class="nav-buttons">
+        <button class="btn-secondary" onclick="goToStep(0)">← Back</button>
+        <button class="btn-primary" id="btn-step1-next" disabled onclick="goToStep(2)">Next: Attention →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 2: Attention → 12LdT² derivation -->
+  <section class="section" id="step-2" data-step="2">
+    <div class="card">
+      <h2>Part 1b — Deriving 12 · L · d · T²</h2>
+      <div class="story">
+        Attention is where PawGPT compares every token to every other token — that's why long conversations get expensive, fast.
+      </div>
+
+      <div class="notation-box">
+        <strong>Notation:</strong> <strong>L</strong> = number of transformer layers &nbsp;|&nbsp; <strong>d</strong> = hidden dimension &nbsp;|&nbsp; <strong>T</strong> = sequence length (context window, in tokens)
+      </div>
+
+      <p>Self-attention builds a <strong>T × T</strong> matrix: each of T tokens scores against all T tokens. Two heavy matrix multiplies create the <strong>T²</strong> term:</p>
+      <div class="formula-box" style="font-size:0.92rem;">
+        ① Q K<sup>T</sup> &nbsp;→&nbsp; (T×d)(d×T) &nbsp;→&nbsp; 2 · T² · d FLOPs<br>
+        ② Attn · V &nbsp;→&nbsp; (T×T)(T×d) &nbsp;→&nbsp; 2 · T² · d FLOPs
+      </div>
+
+      <div class="viz-two-col">
+        <div class="viz-panel" style="margin:0;">
+          <div class="viz-title">The T × T attention grid</div>
+          <canvas id="attnHeatmap" height="220"></canvas>
+          <div class="viz-controls">
+            <label>Sequence length <strong>T</strong> = <span id="attnHeatTLabel">16</span></label>
+            <input type="range" id="attnHeatT" min="4" max="48" step="1" value="16" oninput="updateAttentionViz()">
+          </div>
+          <div class="viz-stat-row">
+            <div class="viz-stat">Grid size<strong id="attnGridSize">16 × 16</strong></div>
+            <div class="viz-stat">Total entries<strong id="attnEntries">256</strong>T²</div>
+          </div>
+          <p class="viz-caption">Each cell = one token asking "how relevant is this other token?" — T tokens → T² comparisons.</p>
+        </div>
+        <div class="viz-panel" style="margin:0;">
+          <div class="viz-title">Matrix shapes in attention</div>
+          <svg viewBox="0 0 280 240" xmlns="http://www.w3.org/2000/svg">
+            <!-- Step 1: QK^T -->
+            <text x="4" y="14" font-size="10" fill="#7c3aed" font-weight="700">① Q Kᵀ → T×T scores</text>
+            <rect x="10" y="24" width="50" height="70" fill="#fff7ed" stroke="#ea580c" rx="3"/>
+            <text x="35" y="62" font-size="9" fill="#78716c" text-anchor="middle">Q</text>
+            <text x="35" y="76" font-size="8" fill="#78716c" text-anchor="middle">T×d</text>
+            <text x="72" y="58" font-size="14" fill="#78716c">×</text>
+            <rect x="84" y="24" width="70" height="50" fill="#f5f3ff" stroke="#7c3aed" rx="3"/>
+            <text x="119" y="48" font-size="9" fill="#78716c" text-anchor="middle">Kᵀ</text>
+            <text x="119" y="62" font-size="8" fill="#78716c" text-anchor="middle">d×T</text>
+            <text x="168" y="58" font-size="14" fill="#78716c">=</text>
+            <rect x="180" y="24" width="70" height="70" fill="#fef2f2" stroke="#dc2626" rx="3"/>
+            <text x="215" y="55" font-size="9" fill="#78716c" text-anchor="middle">scores</text>
+            <text x="215" y="69" font-size="8" fill="#dc2626" text-anchor="middle">T×T</text>
+            <text x="215" y="108" font-size="9" fill="#dc2626" text-anchor="middle" font-weight="600">2T²d FLOPs</text>
+            <!-- Step 2: Attn V -->
+            <text x="4" y="134" font-size="10" fill="#0d9488" font-weight="700">② Attn · V → weighted mix</text>
+            <rect x="10" y="144" width="70" height="70" fill="#fef2f2" stroke="#dc2626" rx="3"/>
+            <text x="45" y="175" font-size="9" fill="#78716c" text-anchor="middle">Attn</text>
+            <text x="45" y="189" font-size="8" fill="#78716c" text-anchor="middle">T×T</text>
+            <text x="92" y="178" font-size="14" fill="#78716c">×</text>
+            <rect x="104" y="154" width="50" height="70" fill="#ecfdf5" stroke="#0d9488" rx="3"/>
+            <text x="129" y="192" font-size="9" fill="#78716c" text-anchor="middle">V</text>
+            <text x="129" y="206" font-size="8" fill="#78716c" text-anchor="middle">T×d</text>
+            <text x="168" y="178" font-size="14" fill="#78716c">=</text>
+            <rect x="180" y="154" width="50" height="70" fill="#ecfdf5" stroke="#0d9488" rx="3"/>
+            <text x="205" y="192" font-size="9" fill="#78716c" text-anchor="middle">out</text>
+            <text x="205" y="206" font-size="8" fill="#78716c" text-anchor="middle">T×d</text>
+            <text x="205" y="232" font-size="9" fill="#0d9488" text-anchor="middle" font-weight="600">2T²d FLOPs</text>
+          </svg>
+          <p class="viz-caption">Both steps produce a T×T intermediate — that's the T² bottleneck.</p>
+        </div>
+      </div>
+
+      <div class="viz-panel">
+        <div class="viz-title">Why T² hurts — how FLOPs scale with L, d, and T</div>
+        <svg viewBox="0 0 660 320" xmlns="http://www.w3.org/2000/svg" aria-label="Attention FLOPs scale linearly with L and d, quadratically with T">
+          <text x="330" y="22" font-size="13" fill="#57534e" font-weight="700" text-anchor="middle">Attention FLOPs = 12 · L · d · T²</text>
+
+          <!-- Three scaling panels -->
+          <!-- L: linear -->
+          <rect x="16" y="40" width="200" height="120" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.5" rx="10"/>
+          <text x="116" y="62" font-size="12" fill="#7c3aed" font-weight="700" text-anchor="middle">× L (layers)</text>
+          <text x="116" y="80" font-size="10" fill="#78716c" text-anchor="middle">linear</text>
+          <rect x="40" y="100" width="40" height="36" fill="#c4b5fd" rx="4"/>
+          <text x="60" y="122" font-size="10" fill="#4c1d95" text-anchor="middle" font-weight="700">L</text>
+          <text x="95" y="122" font-size="16" fill="#78716c">→</text>
+          <rect x="110" y="88" width="40" height="48" fill="#7c3aed" rx="4"/>
+          <text x="130" y="116" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">2L</text>
+          <text x="116" y="148" font-size="11" fill="#57534e" text-anchor="middle">2× layers → <tspan fill="#7c3aed" font-weight="700">2× FLOPs</tspan></text>
+
+          <!-- d: linear -->
+          <rect x="230" y="40" width="200" height="120" fill="#ecfdf5" stroke="#0d9488" stroke-width="1.5" rx="10"/>
+          <text x="330" y="62" font-size="12" fill="#0d9488" font-weight="700" text-anchor="middle">× d (width)</text>
+          <text x="330" y="80" font-size="10" fill="#78716c" text-anchor="middle">linear</text>
+          <rect x="254" y="100" width="40" height="36" fill="#5eead4" rx="4"/>
+          <text x="274" y="122" font-size="10" fill="#134e4a" text-anchor="middle" font-weight="700">d</text>
+          <text x="309" y="122" font-size="16" fill="#78716c">→</text>
+          <rect x="324" y="88" width="40" height="48" fill="#0d9488" rx="4"/>
+          <text x="344" y="116" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">2d</text>
+          <text x="330" y="148" font-size="11" fill="#57534e" text-anchor="middle">2× width → <tspan fill="#0d9488" font-weight="700">2× FLOPs</tspan></text>
+
+          <!-- T: quadratic -->
+          <rect x="444" y="40" width="200" height="120" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5" rx="10"/>
+          <text x="544" y="62" font-size="12" fill="#ea580c" font-weight="700" text-anchor="middle">× T² (context)</text>
+          <text x="544" y="80" font-size="10" fill="#78716c" text-anchor="middle">quadratic!</text>
+          <rect x="468" y="100" width="40" height="36" fill="#fdba74" rx="4"/>
+          <text x="488" y="122" font-size="10" fill="#9a3412" text-anchor="middle" font-weight="700">T</text>
+          <text x="523" y="122" font-size="16" fill="#78716c">→</text>
+          <rect x="538" y="70" width="50" height="66" fill="#ea580c" rx="4"/>
+          <text x="563" y="108" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">4×</text>
+          <text x="544" y="148" font-size="11" fill="#57534e" text-anchor="middle">2× context → <tspan fill="#ea580c" font-weight="700">4× FLOPs</tspan></text>
+
+          <!-- Static curve: FLOPs vs T -->
+          <text x="330" y="186" font-size="12" fill="#57534e" font-weight="700" text-anchor="middle">FLOPs vs sequence length T  (fixed L, d)</text>
+
+          <!-- Axes -->
+          <line x1="60" y1="200" x2="60" y2="290" stroke="#d6d3d1" stroke-width="1.5"/>
+          <line x1="60" y1="290" x2="620" y2="290" stroke="#d6d3d1" stroke-width="1.5"/>
+          <text x="40" y="248" font-size="10" fill="#78716c" text-anchor="middle" transform="rotate(-90 40 248)">FLOPs</text>
+
+          <!-- T² heights: 1→288.6, 4→284.4, 16→267.5, 64→200  (plot top=200, bottom=290) -->
+          <!-- dashed linear reference: 1→288.6, 2→277.1, 4→254.3, 8→208.6 -->
+          <path d="M 100 288.6 L 246.7 277.1 L 393.3 254.3 L 540 208.6" fill="none" stroke="#a8a29e" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <path d="M 100 288.6 L 246.7 284.4 L 393.3 267.5 L 540 200" fill="none" stroke="#ea580c" stroke-width="2.5"/>
+
+          <!-- Markers -->
+          <circle cx="100" cy="288.6" r="5" fill="#7c3aed"/>
+          <circle cx="246.7" cy="284.4" r="5" fill="#7c3aed"/>
+          <circle cx="393.3" cy="267.5" r="5" fill="#7c3aed"/>
+          <circle cx="540" cy="200" r="5" fill="#7c3aed"/>
+
+          <text x="100" y="308" font-size="10" fill="#57534e" text-anchor="middle">T=1K</text>
+          <text x="100" y="280" font-size="9" fill="#78716c" text-anchor="middle">1×</text>
+          <text x="246.7" y="308" font-size="10" fill="#57534e" text-anchor="middle">T=2K</text>
+          <text x="246.7" y="276" font-size="9" fill="#ea580c" text-anchor="middle" font-weight="700">4×</text>
+          <text x="393.3" y="308" font-size="10" fill="#57534e" text-anchor="middle">T=4K</text>
+          <text x="393.3" y="259" font-size="9" fill="#ea580c" text-anchor="middle" font-weight="700">16×</text>
+          <text x="540" y="308" font-size="10" fill="#57534e" text-anchor="middle">T=8K</text>
+          <text x="540" y="192" font-size="9" fill="#ea580c" text-anchor="middle" font-weight="700">64×</text>
+
+          <text x="555" y="230" font-size="9" fill="#a8a29e">linear (ref.)</text>
+          <text x="555" y="210" font-size="9" fill="#ea580c" font-weight="700">T² curve</text>
+        </svg>
+        <p class="viz-caption">L and d scale costs gently. Context length T scales as <strong>T²</strong> — doubling the window multiplies attention FLOPs by four.</p>
+      </div>
+
+      <!-- Q1 -->
+      <div class="derive-step" id="att-q1">
+        <div class="step-tag">Question 1 of 6</div>
+        <p>If PawGPT sees <strong>T = 1,024</strong> tokens, how many entries are in the attention matrix (T × T)?</p>
+        <div class="input-row">
+          <input type="number" id="attA1" placeholder="entries">
+          <button class="btn-primary" onclick="checkAttQ(1)">Check</button>
+        </div>
+        <div class="feedback" id="attF1"></div>
+      </div>
+
+      <!-- Q2 -->
+      <div class="derive-step locked" id="att-q2">
+        <div class="step-tag">Question 2 of 6</div>
+        <p>Compute the FLOPs for step ① (QK<sup>T</sup>) with <strong>T = 1,024</strong> and <strong>d = 768</strong>. Formula: <span class="inline-code">2 × T² × d</span></p>
+        <div class="input-row">
+          <input type="number" id="attA2" placeholder="FLOPs">
+          <button class="btn-primary" onclick="checkAttQ(2)">Check</button>
+        </div>
+        <div class="feedback" id="attF2"></div>
+      </div>
+
+      <!-- Q3 -->
+      <div class="derive-step locked" id="att-q3">
+        <div class="step-tag">Question 3 of 6</div>
+        <p>Step ② (Attn · V) has the <strong>same</strong> shape and cost as step ①. FLOPs for step ② = ?</p>
+        <div class="input-row">
+          <input type="number" id="attA3" placeholder="FLOPs (same as Q2)">
+          <button class="btn-primary" onclick="checkAttQ(3)">Check</button>
+        </div>
+        <div class="feedback" id="attF3"></div>
+      </div>
+
+      <!-- Q4 -->
+      <div class="derive-step locked" id="att-q4">
+        <div class="step-tag">Question 4 of 6</div>
+        <p><strong>Forward pass</strong> T² cost for <strong>one layer</strong> = step ① + step ② = ? (pick the expression)</p>
+        <div class="input-row">
+          <select id="attA4">
+            <option value="">Choose…</option>
+            <option value="2T2d">2 · T² · d</option>
+            <option value="4T2d">4 · T² · d</option>
+            <option value="8T2d">8 · T² · d</option>
+          </select>
+          <button class="btn-primary" onclick="checkAttQ(4)">Check</button>
+        </div>
+        <div class="feedback" id="attF4"></div>
+      </div>
+
+      <!-- Q5 -->
+      <div class="derive-step locked" id="att-q5">
+        <div class="step-tag">Question 5 of 6</div>
+        <p><strong>Training</strong> runs forward + backward. Backward adds about <strong>2×</strong> the forward cost. Total T² cost per layer = ?</p>
+        <div class="input-row">
+          <select id="attA5">
+            <option value="">Choose…</option>
+            <option value="8T2d">8 · T² · d</option>
+            <option value="12T2d">12 · T² · d</option>
+            <option value="16T2d">16 · T² · d</option>
+          </select>
+          <button class="btn-primary" onclick="checkAttQ(5)">Check</button>
+        </div>
+        <div class="feedback" id="attF5"></div>
+      </div>
+
+      <!-- Q6 -->
+      <div class="derive-step locked" id="att-q6">
+        <div class="step-tag">Question 6 of 6 — full formula</div>
+        <p>PawGPT stacks <strong>L</strong> identical layers. Multiply the per-layer cost by L. What is the full attention FLOPs formula?</p>
+        <div class="input-row">
+          <select id="attA6">
+            <option value="">Choose…</option>
+            <option value="4LdT2">4 · L · d · T²</option>
+            <option value="12LdT2">12 · L · d · T²</option>
+            <option value="12L2dT2">12 · L² · d · T²</option>
+          </select>
+          <button class="btn-primary" onclick="checkAttQ(6)">Check</button>
+        </div>
+        <div class="feedback" id="attF6"></div>
+      </div>
+
+      <div class="result-banner" id="attResult">
+        ✓ &nbsp; Attention FLOPs ≈ <strong>12 · L · d · T²</strong> &nbsp;— grows with <strong>T²</strong>, so doubling context quadruples attention cost!
+      </div>
+
+      <details class="hint">
+        <summary>Full derivation recap</summary>
+        QK<sup>T</sup>: 2T²d + Attn·V: 2T²d → forward: 4T²d/layer → ×3 for train: 12T²d/layer → ×L layers: <strong>12LdT²</strong>.
+      </details>
+
+      <div class="nav-buttons">
+        <button class="btn-secondary" onclick="goToStep(1)">← Back</button>
+        <button class="btn-primary" id="btn-step2-next" disabled onclick="goToStep(3)">Next: Scaling →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 3: Scaling -->
+  <section class="section" id="step-3" data-step="3">
+    <div class="card">
+      <h2>Part 1c — How the two formulas scale together</h2>
+      <p>You derived two cost formulas. Here they are side by side:</p>
+      <table>
+        <tr><th>Component</th><th>Formula</th><th>Dominant scaling</th></tr>
+        <tr><td>Linear (full training)</td><td><strong>6 · N · T</strong></td><td>N × training tokens T</td></tr>
+        <tr><td>Attention (per sequence)</td><td><strong>12 · L · d · T²</strong></td><td>T² (context length squared)</td></tr>
+      </table>
+      <p class="notation-box" style="margin-top:0.75rem;"><strong>Watch the symbols:</strong> in 6NT, T = total <em>training</em> tokens. In 12LdT², T = <em>sequence</em> length (context window). Same letter, different meaning — always check which T!</p>
+      <p>For inference on one sequence, linear cost is <strong>2 · N · T</strong> (forward pass only, T = context length here).</p>
+
+      <h3>🎯 Explore scaling</h3>
+      <p>Drag the sliders and watch the graph update. Y-axis is <strong>log₁₀(FLOPs)</strong>; X-axis is <strong>log₁₀(context length T)</strong>. Attention grows steepest (T²).</p>
+
+      <div class="slider-group">
+        <label><span>Parameters (N)</span><span id="scaleNLabel">1B</span></label>
+        <input type="range" id="scaleN" min="9" max="11" step="0.1" value="9" oninput="updateScaling()">
+      </div>
+      <div class="slider-group">
+        <label><span>Context window (T)</span><span id="scaleTLabel">1K</span></label>
+        <input type="range" id="scaleT" min="3" max="5.2" step="0.05" value="3" oninput="updateScaling()">
+      </div>
+      <div class="slider-group">
+        <label><span>Training tokens (D)</span><span id="scaleDLabel">20B</span></label>
+        <input type="range" id="scaleD" min="9" max="13" step="0.1" value="10.3" oninput="updateScaling()">
+      </div>
+      <div class="slider-group">
+        <label><span>Layers (L)</span><span id="scaleLLabel">24</span></label>
+        <input type="range" id="scaleL" min="6" max="96" step="1" value="24" oninput="updateScaling()">
+      </div>
+
+      <div class="viz-panel" style="margin-top:0.5rem;">
+        <div class="viz-title">FLOPs vs context length T — log–log scale</div>
+        <canvas id="scaleCanvas" height="300"></canvas>
+        <div class="viz-stat-row" id="scaleStats"></div>
+        <p class="viz-caption">Solid curves show how each cost changes with T. The dashed vertical line is your current context window. Training (6ND) is flat in T — it depends on training tokens D, not context length.</p>
+      </div>
+
+      <h3>🎯 Quick check</h3>
+      <p>If you <strong>double</strong> the context window (T) but keep N, D, and L the same, attention FLOPs (12LdT²)…</p>
+      <div class="input-row">
+        <select id="scaleQuiz">
+          <option value="">Choose…</option>
+          <option value="same">Stay the same</option>
+          <option value="double">Double</option>
+          <option value="quadruple">Quadruple</option>
+        </select>
+        <button class="btn-primary" onclick="checkScaling()">Check</button>
+      </div>
+      <div class="feedback" id="scaleFeedback"></div>
+
+      <div class="nav-buttons">
+        <button class="btn-secondary" onclick="goToStep(2)">← Back</button>
+        <button class="btn-primary" id="btn-step3-next" disabled onclick="goToStep(4)">Next: Unlock GPUs →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 4: GPU Unlock -->
+  <section class="section" id="step-4" data-step="4">
+    <div class="card">
+      <h2>Part 2 — Unlock your training GPUs</h2>
+      <div class="story">
+        Your demo PawGPT: <strong>1 billion parameters</strong>, <strong>1K token</strong> context window.
+        You plan to train on <strong>20 billion</strong> woof/meow tokens (the "Chinchilla" sweet spot ≈ 20× params).
+      </div>
+
+      <table>
+        <tr><th>Quantity</th><th>Value</th><th>Formula</th></tr>
+        <tr><td>Training FLOPs</td><td id="demoTrainFlops">—</td><td>6 × N × T (T = training tokens)</td></tr>
+        <tr><td>Inference FLOPs (full context)</td><td id="demoInfFlops">—</td><td>2 × N × T (T = context length)</td></tr>
+      </table>
+
+      <p>To rent a GPU, the cloud provider asks: <em>"How many hours will training take, and how fast is inference?"</em> Calculate correctly to unlock each card.</p>
+
+      <div class="formula-box formula-display">
+        <div class="formula-item">
+          <div class="formula-label">Training time</div>
+          <div class="formula-eq">
+            <span>hours</span>
+            <span>=</span>
+            <span class="frac">
+              <span class="num">6 × N × T<sub>train</sub></span>
+              <span class="den">Peak FLOPs/s &nbsp;×&nbsp; MFU<sub>train</sub> &nbsp;×&nbsp; 3600</span>
+            </span>
+          </div>
+          <div class="formula-note">The 3600 converts seconds into hours.</div>
+        </div>
+
+        <hr class="formula-divider">
+
+        <div class="formula-item">
+          <div class="formula-label">Inference time</div>
+          <div class="formula-eq">
+            <span>seconds</span>
+            <span>=</span>
+            <span class="frac">
+              <span class="num">Inference FLOPs</span>
+              <span class="den">Peak FLOPs/s &nbsp;×&nbsp; MFU<sub>inf</sub></span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <ul class="def-list">
+        <li><strong>Peak FLOPs/s</strong> — the spec-sheet top speed of the GPU: the most floating-point operations it can theoretically perform per second.</li>
+        <li><strong>MFU</strong> (Model FLOPs Utilisation) — the fraction of that peak speed you actually reach in practice, once memory traffic, communication and idle time are accounted for.</li>
+      </ul>
+
+      <div class="gpu-grid" id="gpuGrid"></div>
+
+      <div class="nav-buttons">
+        <button class="btn-secondary" onclick="goToStep(3)">← Back</button>
+        <button class="btn-primary" id="btn-step4-next" disabled onclick="goToStep(5)">Next: Multi-GPU →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 5: Multi-GPU -->
+  <section class="section" id="step-5" data-step="5">
+    <div class="card">
+      <h2>Part 3 — Scale out with multiple GPUs</h2>
+      <div class="story">
+        Training on one GPU takes forever. Your co-founder suggests <strong>distributed training</strong> — split the work across many GPUs.
+      </div>
+
+      <p>Select an unlocked GPU and how many you want to rent:</p>
+      <div class="input-row">
+        <label for="mgpuSelect">GPU:</label>
+        <select id="mgpuSelect" onchange="updateMultiGpu()"></select>
+        <label for="mgpuCount"># GPUs:</label>
+        <input type="number" id="mgpuCount" min="1" max="64" value="4" oninput="updateMultiGpu()">
+      </div>
+
+      <div class="hint" style="display:block;">
+        <strong>Guided reasoning:</strong><br>
+        • <em>Wall-clock time</em> ≈ single-GPU hours ÷ (# GPUs × efficiency)<br>
+        • <em>Total cost</em> = wall-clock hours × # GPUs × price/hour<br>
+        • Efficiency drops slightly with more GPUs (communication overhead) — we use <strong>85%</strong> per doubling cluster size as a simple model.
+      </div>
+
+      <div class="dashboard" id="multiDashboard"></div>
+      <div class="viz-panel" style="margin-top:0.5rem;">
+        <div class="viz-title">Wall-clock time &amp; cost vs # GPUs</div>
+        <canvas id="multiCanvas" height="260"></canvas>
+        <p class="viz-caption">Left axis: hours (linear). Right axis: dollars (linear). More GPUs cut wall-clock time but total bill stays roughly flat (or rises slightly as efficiency drops).</p>
+      </div>
+
+      <h3>🎯 Your turn</h3>
+      <p>Using the <strong>H100</strong> with <strong>8 GPUs</strong>, estimate wall-clock training hours for the 1B demo model. (Round to nearest whole hour.)</p>
+      <div class="input-row">
+        <input type="number" id="multiAnswer" placeholder="hours">
+        <button class="btn-primary" onclick="checkMulti()">Check</button>
+      </div>
+      <div class="feedback" id="multiFeedback"></div>
+
+      <details class="hint">
+        <summary>Walkthrough</summary>
+        Single H100 ≈ 75 GPU-hours. With 8 GPUs and cluster efficiency ≈ 61%: 75 ÷ (8 × 0.61) ≈ 15 hours wall-clock.
+      </details>
+
+      <div class="nav-buttons">
+        <button class="btn-secondary" onclick="goToStep(4)">← Back</button>
+        <button class="btn-primary" id="btn-step5-next" disabled onclick="goToStep(6)">Demo day →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 6: Investor Game -->
+  <section class="section" id="step-6" data-step="6">
+    <div class="card">
+      <h2>Part 4 — Investor pitch: make PawGPT a success</h2>
+      <div class="story">
+        🎉 Investors loved the demo! They've wired <strong>$2,000,000</strong> — but they'll pull out if you blow the budget or take too long.
+        Your engineering team threatens to quit if training exceeds <strong>21 days</strong> (504 hours wall-clock).
+      </div>
+
+      <p>Design your production PawGPT. Balance three pressures:</p>
+      <table>
+        <tr><th>Pressure</th><th>Constraint</th></tr>
+        <tr><td>🧠 Accuracy</td><td>Needs strong params <em>and</em> long context <em>and</em> enough data (score ≥ 78)</td></tr>
+        <tr><td>⏱️ Team morale</td><td>Wall-clock training ≤ 504 hours</td></tr>
+        <tr><td>💰 Investors</td><td>Total cost ≤ $2,000,000</td></tr>
+      </table>
+
+      <div class="slider-group">
+        <label><span>Parameters</span><span id="gameNLabel">7B</span></label>
+        <input type="range" id="gameN" min="9" max="11.5" step="0.05" value="9.85" oninput="updateGame()">
+      </div>
+      <div class="slider-group">
+        <label><span>Context window</span><span id="gameLLabel">4K</span></label>
+        <input type="range" id="gameL" min="3" max="5.2" step="0.05" value="3.6" oninput="updateGame()">
+      </div>
+      <div class="slider-group">
+        <label><span>Training tokens (× params ratio)</span><span id="gameRatioLabel">20×</span></label>
+        <input type="range" id="gameRatio" min="10" max="40" step="1" value="20" oninput="updateGame()">
+      </div>
+      <div class="input-row">
+        <label for="gameGpu">Hardware:</label>
+        <select id="gameGpu"></select>
+        <label for="gameGpus">GPUs:</label>
+        <input type="number" id="gameGpus" min="1" max="256" value="32" oninput="updateGame()">
+      </div>
+
+      <div class="dashboard" id="gameDashboard"></div>
+
+      <div class="meter" title="Accuracy score">
+        <div class="meter-fill" id="accuracyMeter" style="width:0%; background: var(--purple);"></div>
+      </div>
+      <p style="font-size:0.85rem; color:var(--muted); margin-top:0.35rem;">Accuracy score (higher = smarter pet conversations)</p>
+
+      <div class="input-row" style="margin-top:1.25rem;">
+        <button class="btn-teal" onclick="launchTraining()">🚀 Launch training run</button>
+      </div>
+      <div class="feedback" id="gameFeedback"></div>
+
+      <div id="winScreen" class="win-screen" style="display:none;">
+        <div class="big">🏆🐾</div>
+        <h2>PawGPT is a hit!</h2>
+        <p>You balanced scale, speed, and budget. Pets everywhere are finally understood.</p>
+        <button class="btn-secondary" onclick="resetGame()">Play again</button>
+      </div>
+
+      <div class="nav-buttons">
+        <button class="btn-secondary" onclick="goToStep(5)">← Back</button>
+        <span></span>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Floating calculator (available on all steps) -->
+<div class="calc-panel" id="calcPanel" aria-label="Calculator">
+  <div class="calc-header">
+    <span>FLOPs calculator</span>
+    <button type="button" onclick="toggleCalc()" title="Close">✕</button>
+  </div>
+  <div class="calc-display">
+    <div class="calc-expr" id="calcExpr"></div>
+    <div class="calc-value" id="calcValue">0</div>
+  </div>
+  <div class="calc-keys">
+    <button type="button" class="fn" onclick="calcClear()">C</button>
+    <button type="button" class="fn" onclick="calcBack()">⌫</button>
+    <button type="button" class="fn" onclick="calcInput('^')">xʸ</button>
+    <button type="button" class="op" onclick="calcInput('/')">÷</button>
+
+    <button type="button" onclick="calcInput('7')">7</button>
+    <button type="button" onclick="calcInput('8')">8</button>
+    <button type="button" onclick="calcInput('9')">9</button>
+    <button type="button" class="op" onclick="calcInput('*')">×</button>
+
+    <button type="button" onclick="calcInput('4')">4</button>
+    <button type="button" onclick="calcInput('5')">5</button>
+    <button type="button" onclick="calcInput('6')">6</button>
+    <button type="button" class="op" onclick="calcInput('-')">−</button>
+
+    <button type="button" onclick="calcInput('1')">1</button>
+    <button type="button" onclick="calcInput('2')">2</button>
+    <button type="button" onclick="calcInput('3')">3</button>
+    <button type="button" class="op" onclick="calcInput('+')">+</button>
+
+    <button type="button" onclick="calcInput('0')">0</button>
+    <button type="button" onclick="calcInput('.')">.</button>
+    <button type="button" class="fn" onclick="calcInput('e')">e</button>
+    <button type="button" class="eq" onclick="calcEquals()">=</button>
+
+    <button type="button" class="fn span2" onclick="calcInput('(')">(</button>
+    <button type="button" class="fn span2" onclick="calcInput(')')">)</button>
+  </div>
+  <p class="calc-hint">Tip: use <strong>e</strong> for scientific notation (e.g. <code>1.2e20</code>). <strong>xʸ</strong> is power (e.g. <code>768^2</code>).</p>
+</div>
+<button type="button" class="calc-fab" id="calcFab" onclick="toggleCalc()" title="Open calculator" aria-label="Open calculator"><span class="calc-fab-icon">∑</span> Calculator</button>
+
+<script>
+/* ─── Constants ─── */
+const DEMO = { N: 1e9, T: 1024, D: 20e9, layers: 24, d: 768 };
+
+const GPUS = {
+  purrPod: {
+    id: 'purrPod',
+    name: 'T4',
+    peak: 65e12,
+    mfuTrain: 0.35,
+    mfuInf: 0.28,
+    price: 0.75,
+    desc: 'Budget cloud GPU — cheap but slow'
+  },
+  barkBox: {
+    id: 'barkBox',
+    name: 'A100',
+    peak: 312e12,
+    mfuTrain: 0.40,
+    mfuInf: 0.30,
+    price: 2.50,
+    desc: 'Workhorse datacenter GPU'
+  },
+  meowMax: {
+    id: 'meowMax',
+    name: 'H100',
+    peak: 990e12,
+    mfuTrain: 0.45,
+    mfuInf: 0.35,
+    price: 4.50,
+    desc: 'Top-tier training speed'
+  }
+};
+
+const STEPS = [
+  'Intro', 'Linear', 'Attention', 'Scaling', 'GPUs', 'Multi-GPU', 'Investors'
+];
+
+const state = {
+  step: 0,
+  completed: {},
+  unlockedGpus: new Set(),
+  linearOk: false,
+  attnOk: false,
+  linearQ: 0,
+  attnQ: 0,
+  scaleOk: false,
+  multiOk: false
+};
+
+/* ─── Math helpers ─── */
+function trainFlops(N, D) { return 6 * N * D; }
+function infFlops(N, T) { return 2 * N * T; }
+function attnFlops(L, d, T) { return 12 * L * d * T * T; }
+function estDim(N, L) { return Math.sqrt(N / (12 * Math.max(L, 1))); }
+
+function gpuHours(totalFlops, gpu) {
+  const achieved = gpu.peak * gpu.mfuTrain;
+  return totalFlops / achieved / 3600;
+}
+
+function infSeconds(totalFlops, gpu) {
+  const achieved = gpu.peak * gpu.mfuInf;
+  return totalFlops / achieved;
+}
+
+function clusterEfficiency(n) {
+  if (n <= 1) return 1;
+  return Math.pow(0.85, Math.log2(n));
+}
+
+function wallClockHours(singleGpuH, nGpus) {
+  return singleGpuH / (nGpus * clusterEfficiency(nGpus));
+}
+
+function fmtNum(n) {
+  if (n >= 1e12) return (n / 1e12).toFixed(2) + 'T';
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+  return n.toFixed(0);
+}
+
+function fmtHuman(n) {
+  if (n >= 1e12) return (n / 1e12).toFixed(1) + ' trillion';
+  if (n >= 1e9) return (n / 1e9).toFixed(1) + ' billion';
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + ' million';
+  return n.toLocaleString();
+}
+
+function fmtTime(seconds) {
+  if (seconds >= 1) return seconds.toFixed(2) + ' s';
+  return (seconds * 1000).toFixed(1) + ' ms';
+}
+
+function within(a, b, pct) {
+  return Math.abs(a - b) / Math.max(b, 1e-9) <= pct;
+}
+
+/* ─── Attention visualizations ─── */
+function drawAttnHeatmap() {
+  const canvas = document.getElementById('attnHeatmap');
+  if (!canvas) return;
+  const T = Number(document.getElementById('attnHeatT')?.value || 16);
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.clientWidth || 280;
+  const H = 220;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  const pad = 28;
+  const size = Math.min(W, H) - pad * 2;
+  const cell = size / T;
+
+  for (let r = 0; r < T; r++) {
+    for (let c = 0; c < T; c++) {
+      const t = (r + c) / (2 * T);
+      const hue = 24 - t * 16;
+      const light = 88 - t * 38;
+      ctx.fillStyle = `hsl(${hue}, 85%, ${light}%)`;
+      ctx.fillRect(pad + c * cell, pad + r * cell, cell - 0.5, cell - 0.5);
+    }
+  }
+
+  // Highlight diagonal (self-attention)
+  ctx.strokeStyle = '#7c3aed';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([3, 2]);
+  for (let i = 0; i < T; i++) {
+    ctx.strokeRect(pad + i * cell + 1, pad + i * cell + 1, cell - 2, cell - 2);
+  }
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = '#78716c';
+  ctx.font = '10px system-ui';
+  ctx.fillText('token →', pad + size / 2 - 20, pad - 8);
+  ctx.save();
+  ctx.translate(12, pad + size / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('token ↓', -20, 0);
+  ctx.restore();
+
+  document.getElementById('attnHeatTLabel').textContent = T;
+  document.getElementById('attnGridSize').textContent = T + ' × ' + T;
+  document.getElementById('attnEntries').textContent = (T * T).toLocaleString();
+}
+
+function initAttentionViz() {
+  drawAttnHeatmap();
+}
+
+function updateAttentionViz() {
+  drawAttnHeatmap();
+}
+
+// Redraw charts on window resize
+let vizResizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(vizResizeTimer);
+  vizResizeTimer = setTimeout(() => {
+  if (state.step === 2) updateAttentionViz();
+  if (state.step === 3) updateScaling();
+  if (state.step === 5) updateMultiGpu();
+  }, 150);
+});
+
+/* ─── Navigation ─── */
+function buildProgress() {
+  const el = document.getElementById('progressSteps');
+  el.innerHTML = STEPS.map((name, i) => {
+    const cls = i === state.step ? 'active' : (state.completed[i] ? 'done' : '');
+    return `<div class="step-dot ${cls}" onclick="goToStep(${i})" title="${name}">
+      <span>${state.completed[i] && i !== state.step ? '✓' : i + 1}</span>${name}
+    </div>`;
+  }).join('');
+}
+
+function goToStep(n) {
+  if (n > 0 && !canAccessStep(n)) return;
+  state.step = n;
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('step-' + n).classList.add('active');
+  buildProgress();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (n === 3) updateScaling();
+  if (n === 2) initAttentionViz();
+  if (n === 4) initGpuStep();
+  if (n === 5) initMultiStep();
+  if (n === 6) initGame();
+}
+
+function canAccessStep(n) {
+  const gates = { 1: true, 2: state.linearOk, 3: state.attnOk, 4: state.scaleOk, 5: state.unlockedGpus.size >= 1, 6: state.multiOk };
+  for (let i = 1; i <= n; i++) {
+    if (gates[i] === false) return false;
+  }
+  return true;
+}
+
+function markComplete(n) {
+  state.completed[n] = true;
+  buildProgress();
+}
+
+function showFeedback(id, ok, msg) {
+  const el = document.getElementById(id);
+  el.className = 'feedback show ' + (ok ? 'ok' : 'err');
+  el.textContent = msg;
+}
+
+/* ─── Step 1: Linear derivation → 6ND ─── */
+function unlockLinStep(q) {
+  state.linearQ = q;
+  const el = document.getElementById('lin-q' + q);
+  if (el) { el.classList.remove('locked'); el.classList.add('done'); }
+  const next = document.getElementById('lin-q' + (q + 1));
+  if (next) next.classList.remove('locked');
+  if (q >= 5) {
+    state.linearOk = true;
+    markComplete(1);
+    document.getElementById('linResult').classList.add('show');
+    document.getElementById('btn-step1-next').disabled = false;
+  }
+}
+
+function checkLinQ(q) {
+  const T = 1024, d = 512;
+  if (q === 1) {
+    const ans = Number(document.getElementById('linA1').value);
+    const expected = 2 * d * d;
+    if (within(ans, expected, 0.01)) {
+      showFeedback('linF1', true, `✓ Correct! 2 × 512 × 512 = ${expected.toLocaleString()} FLOPs for one token through one layer.`);
+      unlockLinStep(1);
+    } else showFeedback('linF1', false, 'Use FLOPs = 2 × d × d with d = 512.');
+  }
+  if (q === 2) {
+    const v = document.getElementById('linA2').value;
+    if (v === '2N') {
+      showFeedback('linF2', true, '✓ Correct! Each parameter does one multiply-add → 2 FLOPs per parameter per token.');
+      unlockLinStep(2);
+    } else showFeedback('linF2', false, 'Forward pass: each of N params used once, each multiply-add = 2 FLOPs.');
+  }
+  if (q === 3) {
+    const v = document.getElementById('linA3').value;
+    if (v === '4N') {
+      showFeedback('linF3', true, '✓ Correct! Backward ≈ 2 × forward = 2 × 2N = 4N FLOPs per token.');
+      unlockLinStep(3);
+    } else showFeedback('linF3', false, 'Backward costs about twice the forward pass (which was 2N).');
+  }
+  if (q === 4) {
+    const v = document.getElementById('linA4').value;
+    if (v === '6N') {
+      showFeedback('linF4', true, '✓ Correct! 2N + 4N = 6N FLOPs to train on one token.');
+      unlockLinStep(4);
+    } else showFeedback('linF4', false, 'Add forward (2N) and backward (4N) together.');
+  }
+  if (q === 5) {
+    const coef = Number(document.getElementById('linA5coef').value);
+    if (coef === 6) {
+      showFeedback('linF5', true, '✓ You derived it! Training FLOPs = 6 · N · T — the most-used rule of thumb in LLM budgeting.');
+      unlockLinStep(5);
+    } else showFeedback('linF5', false, 'Per-token cost is 6N. Multiply by T training tokens — what coefficient do you get?');
+  }
+}
+
+/* ─── Step 2: Attention derivation → 12LdT² ─── */
+function unlockAttStep(q) {
+  state.attnQ = q;
+  const el = document.getElementById('att-q' + q);
+  if (el) { el.classList.remove('locked'); el.classList.add('done'); }
+  const next = document.getElementById('att-q' + (q + 1));
+  if (next) next.classList.remove('locked');
+  if (q >= 6) {
+    state.attnOk = true;
+    markComplete(2);
+    document.getElementById('attResult').classList.add('show');
+    document.getElementById('btn-step2-next').disabled = false;
+  }
+  updateAttentionViz();
+}
+
+function checkAttQ(q) {
+  const T = 1024, d = 768;
+  const qkFlops = 2 * T * T * d;
+  if (q === 1) {
+    const ans = Number(document.getElementById('attA1').value);
+    if (ans === T * T) {
+      showFeedback('attF1', true, `✓ Correct! ${T} × ${T} = ${(T*T).toLocaleString()} pairwise comparisons — that's why attention scales as T².`);
+      unlockAttStep(1);
+    } else showFeedback('attF1', false, 'The attention matrix has T rows and T columns.');
+  }
+  if (q === 2) {
+    const ans = Number(document.getElementById('attA2').value);
+    if (within(ans, qkFlops, 0.02)) {
+      showFeedback('attF2', true, `✓ Correct! 2 × ${T}² × ${d} = ${qkFlops.toLocaleString()} FLOPs for QKᵀ.`);
+      unlockAttStep(2);
+    } else showFeedback('attF2', false, `Use 2 × T² × d with T=${T}, d=${d}.`);
+  }
+  if (q === 3) {
+    const ans = Number(document.getElementById('attA3').value);
+    if (within(ans, qkFlops, 0.02)) {
+      showFeedback('attF3', true, '✓ Correct! Attn · V has the same (T×T)(T×d) shape and cost.');
+      unlockAttStep(3);
+    } else showFeedback('attF3', false, 'Step ② has the same dimensions and formula as step ①.');
+  }
+  if (q === 4) {
+    const v = document.getElementById('attA4').value;
+    if (v === '4T2d') {
+      showFeedback('attF4', true, '✓ Correct! 2T²d + 2T²d = 4T²d FLOPs forward per layer.');
+      unlockAttStep(4);
+    } else showFeedback('attF4', false, 'Add step ① (2T²d) and step ② (2T²d).');
+  }
+  if (q === 5) {
+    const v = document.getElementById('attA5').value;
+    if (v === '12T2d') {
+      showFeedback('attF5', true, '✓ Correct! Forward (4T²d) × 3 for train (fwd + bwd) = 12T²d per layer.');
+      unlockAttStep(5);
+    } else showFeedback('attF5', false, 'Training total = forward cost × 3 (forward + backward ≈ 2× forward).');
+  }
+  if (q === 6) {
+    const v = document.getElementById('attA6').value;
+    if (v === '12LdT2') {
+      showFeedback('attF6', true, '✓ You derived it! Attention FLOPs = 12 · L · d · T² — the T² is why long context is expensive.');
+      unlockAttStep(6);
+    } else showFeedback('attF6', false, 'Multiply per-layer cost (12T²d) by L layers.');
+  }
+}
+
+/* ─── Step 3: Scaling ─── */
+function updateScaling() {
+  const N = Math.pow(10, Number(document.getElementById('scaleN').value));
+  const T = Math.pow(10, Number(document.getElementById('scaleT').value));
+  const D = Math.pow(10, Number(document.getElementById('scaleD').value));
+  const L = Number(document.getElementById('scaleL').value);
+  const d = estDim(N, L);
+
+  document.getElementById('scaleNLabel').textContent = fmtNum(N);
+  document.getElementById('scaleTLabel').textContent = fmtNum(T);
+  document.getElementById('scaleDLabel').textContent = fmtNum(D);
+  document.getElementById('scaleLLabel').textContent = String(L);
+
+  const train = trainFlops(N, D);
+  const inf = infFlops(N, T);
+  const attn = attnFlops(L, d, T);
+
+  document.getElementById('scaleStats').innerHTML = `
+    <div class="viz-stat"><strong style="color:#7c3aed">${fmtNum(train)}</strong>6ND train</div>
+    <div class="viz-stat"><strong style="color:#0d9488">${fmtNum(attn)}</strong>12LdT² attn</div>
+    <div class="viz-stat"><strong style="color:#ea580c">${fmtNum(inf)}</strong>2NT infer</div>
+    <div class="viz-stat"><strong>d ≈ ${Math.round(d)}</strong>est. width</div>
+  `;
+
+  drawScaleGraph(N, D, L, d, T);
+}
+
+function drawScaleGraph(N, D, L, d, Tcur) {
+  const canvas = document.getElementById('scaleCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.clientWidth || 600;
+  const H = 300;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  const pad = { l: 58, r: 18, t: 28, b: 44 };
+  const plotW = W - pad.l - pad.r;
+  const plotH = H - pad.t - pad.b;
+
+  // X range: context length (log10)
+  const logTMin = 2.7;   // ~500
+  const logTMax = 5.3;   // ~200K
+  // Sample curves across the range
+  const samples = 80;
+  const series = [
+    { name: '6ND train', color: '#7c3aed', fn: () => trainFlops(N, D) },
+    { name: '12LdT² attn', color: '#0d9488', fn: (T) => attnFlops(L, d, T) },
+    { name: '2NT infer', color: '#ea580c', fn: (T) => infFlops(N, T) }
+  ];
+
+  let logYMin = Infinity, logYMax = -Infinity;
+  const curves = series.map(s => {
+    const pts = [];
+    for (let i = 0; i <= samples; i++) {
+      const logT = logTMin + (logTMax - logTMin) * (i / samples);
+      const T = Math.pow(10, logT);
+      const y = s.fn(T);
+      const logY = Math.log10(Math.max(y, 1));
+      pts.push({ logT, logY, T, y });
+      if (logY < logYMin) logYMin = logY;
+      if (logY > logYMax) logYMax = logY;
+    }
+    return { ...s, pts };
+  });
+
+  // Pad log range a bit; at least 2 decades of room
+  logYMin = Math.floor(logYMin) - 0.3;
+  logYMax = Math.ceil(logYMax) + 0.3;
+  if (logYMax - logYMin < 2) {
+    const mid = (logYMin + logYMax) / 2;
+    logYMin = mid - 1;
+    logYMax = mid + 1;
+  }
+
+  const xOf = (logT) => pad.l + ((logT - logTMin) / (logTMax - logTMin)) * plotW;
+  const yOf = (logY) => pad.t + plotH - ((logY - logYMin) / (logYMax - logYMin)) * plotH;
+
+  // Background
+  ctx.fillStyle = '#fafaf9';
+  ctx.fillRect(pad.l, pad.t, plotW, plotH);
+
+  // Grid — decades on both axes
+  ctx.strokeStyle = '#e7e5e4';
+  ctx.lineWidth = 1;
+  ctx.fillStyle = '#a8a29e';
+  ctx.font = '10px system-ui';
+  ctx.textAlign = 'right';
+  for (let decade = Math.ceil(logYMin); decade <= Math.floor(logYMax); decade++) {
+    const y = yOf(decade);
+    ctx.beginPath();
+    ctx.moveTo(pad.l, y);
+    ctx.lineTo(pad.l + plotW, y);
+    ctx.stroke();
+    ctx.fillText('10' + toSuperscript(decade), pad.l - 6, y + 3);
+  }
+  ctx.textAlign = 'center';
+  for (let decade = Math.ceil(logTMin); decade <= Math.floor(logTMax); decade++) {
+    const x = xOf(decade);
+    ctx.beginPath();
+    ctx.moveTo(x, pad.t);
+    ctx.lineTo(x, pad.t + plotH);
+    ctx.stroke();
+    ctx.fillText(fmtNum(Math.pow(10, decade)), x, pad.t + plotH + 16);
+  }
+
+  // Axes
+  ctx.strokeStyle = '#78716c';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(pad.l, pad.t);
+  ctx.lineTo(pad.l, pad.t + plotH);
+  ctx.lineTo(pad.l + plotW, pad.t + plotH);
+  ctx.stroke();
+
+  // Curves
+  curves.forEach(s => {
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    s.pts.forEach((p, i) => {
+      const x = xOf(p.logT);
+      const y = yOf(p.logY);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  });
+
+  // Current-T marker
+  const logTcur = Math.log10(Tcur);
+  const clamped = Math.min(logTMax, Math.max(logTMin, logTcur));
+  const mx = xOf(clamped);
+  ctx.strokeStyle = '#57534e';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([5, 4]);
+  ctx.beginPath();
+  ctx.moveTo(mx, pad.t);
+  ctx.lineTo(mx, pad.t + plotH);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Markers at current T for each series
+  curves.forEach(s => {
+    const yVal = s.fn(Tcur);
+    const logY = Math.log10(Math.max(yVal, 1));
+    const my = yOf(Math.min(logYMax, Math.max(logYMin, logY)));
+    ctx.fillStyle = s.color;
+    ctx.beginPath();
+    ctx.arc(mx, my, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  });
+
+  // Legend
+  ctx.font = '600 11px system-ui';
+  ctx.textAlign = 'left';
+  let lx = pad.l + 8;
+  const ly = pad.t - 10;
+  curves.forEach(s => {
+    ctx.fillStyle = s.color;
+    ctx.fillRect(lx, ly - 7, 14, 4);
+    ctx.fillText(s.name, lx + 18, ly);
+    lx += ctx.measureText(s.name).width + 36;
+  });
+
+  // Axis titles
+  ctx.fillStyle = '#78716c';
+  ctx.font = '10px system-ui';
+  ctx.textAlign = 'center';
+  ctx.fillText('Context length T (log scale) →', pad.l + plotW / 2, H - 6);
+  ctx.save();
+  ctx.translate(14, pad.t + plotH / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('FLOPs (log₁₀)', 0, 0);
+  ctx.restore();
+}
+
+function toSuperscript(n) {
+  const map = { '-': '⁻', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹' };
+  return String(n).split('').map(c => map[c] || c).join('');
+}
+
+function checkScaling() {
+  const v = document.getElementById('scaleQuiz').value;
+  if (v === 'quadruple') {
+    state.scaleOk = true;
+    markComplete(3);
+    document.getElementById('btn-step3-next').disabled = false;
+    showFeedback('scaleFeedback', true, '✓ Correct! 12LdT² contains T² — doubling T quadruples attention FLOPs.');
+  } else {
+    showFeedback('scaleFeedback', false, 'Look at 12L d T². What happens to T² when T doubles?');
+  }
+}
+
+/* ─── Step 4: GPU unlock ─── */
+function initGpuStep() {
+  const tf = trainFlops(DEMO.N, DEMO.D);
+  const inf = infFlops(DEMO.N, DEMO.T);
+  document.getElementById('demoTrainFlops').textContent = fmtHuman(tf) + ' (' + tf.toExponential(2) + ')';
+  document.getElementById('demoInfFlops').textContent = fmtHuman(inf) + ' (' + inf.toExponential(2) + ')';
+
+  const grid = document.getElementById('gpuGrid');
+  grid.innerHTML = Object.values(GPUS).map(g => {
+    const hours = gpuHours(tf, g);
+    const sec = infSeconds(inf, g);
+    const unlocked = state.unlockedGpus.has(g.id);
+    return `
+      <div class="gpu-card ${unlocked ? 'unlocked' : 'locked'}" id="gpu-${g.id}">
+        <h4>${g.name} <span class="badge ${unlocked ? 'badge-open' : 'badge-locked'}">${unlocked ? 'Unlocked' : 'Locked'}</span></h4>
+        <p style="font-size:0.85rem; color:var(--muted); margin:0 0 0.5rem;">${g.desc}</p>
+        <table style="font-size:0.82rem;">
+          <tr><td>Peak FLOPs/s</td><td>${fmtNum(g.peak)}/s</td></tr>
+          <tr><td>MFU (train / inf)</td><td>${(g.mfuTrain*100).toFixed(0)}% / ${(g.mfuInf*100).toFixed(0)}%</td></tr>
+          <tr><td>Price</td><td>$${g.price.toFixed(2)}/hr</td></tr>
+        </table>
+        ${unlocked ? `<p style="color:var(--success); font-size:0.88rem; margin:0.75rem 0 0;">✓ Training: ~${Math.round(hours)} hrs · Inference: ${fmtTime(sec)}</p>` : `
+          <p style="font-size:0.85rem; margin:0.75rem 0 0.35rem;"><strong>Enter estimates to unlock:</strong></p>
+          <div class="input-row" style="flex-direction:column; align-items:stretch;">
+            <label>Training hours: <input type="number" id="train-${g.id}" placeholder="round to nearest hour"></label>
+            <label>Inference time (seconds): <input type="number" step="0.01" id="inf-${g.id}" placeholder="e.g. 0.02"></label>
+            <button class="btn-primary" onclick="unlockGpu('${g.id}')">Unlock ${g.name}</button>
+          </div>
+          <div class="feedback" id="fb-${g.id}"></div>
+        `}
+      </div>`;
+  }).join('');
+
+  document.getElementById('btn-step4-next').disabled = state.unlockedGpus.size < 1;
+}
+
+function unlockGpu(id) {
+  const g = GPUS[id];
+  const tf = trainFlops(DEMO.N, DEMO.D);
+  const inf = infFlops(DEMO.N, DEMO.T);
+  const expectedH = gpuHours(tf, g);
+  const expectedS = infSeconds(inf, g);
+  const userH = Number(document.getElementById('train-' + id).value);
+  const userS = Number(document.getElementById('inf-' + id).value);
+  const fb = document.getElementById('fb-' + id);
+
+  const hOk = within(userH, expectedH, 0.08) || Math.abs(userH - Math.round(expectedH)) <= Math.max(2, expectedH * 0.05);
+  const sOk = within(userS, expectedS, 0.12);
+
+  if (hOk && sOk) {
+    state.unlockedGpus.add(id);
+    fb.className = 'feedback show ok';
+    fb.textContent = `✓ Unlocked! Actual: ~${Math.round(expectedH)} hrs training, ${fmtTime(expectedS)} inference.`;
+    markComplete(4);
+    initGpuStep();
+  } else {
+    fb.className = 'feedback show err';
+    let hint = 'Check your formulas. ';
+    if (!hOk) hint += `Training hint: ${fmtHuman(tf)} FLOPs ÷ (${fmtNum(g.peak)} × ${g.mfuTrain}) ÷ 3600. `;
+    if (!sOk) hint += `Inference hint: ${fmtHuman(inf)} FLOPs ÷ (${fmtNum(g.peak)} × ${g.mfuInf}).`;
+    fb.textContent = hint;
+  }
+}
+
+/* ─── Step 5: Multi-GPU ─── */
+function initMultiStep() {
+  const sel = document.getElementById('mgpuSelect');
+  const unlocked = [...state.unlockedGpus];
+  sel.innerHTML = unlocked.map(id => `<option value="${id}">${GPUS[id].name}</option>`).join('');
+  if (!sel.value && unlocked.length) sel.value = unlocked[0];
+  updateMultiGpu();
+}
+
+function updateMultiGpu() {
+  const id = document.getElementById('mgpuSelect').value;
+  if (!id) return;
+  const g = GPUS[id];
+  const n = Math.max(1, Number(document.getElementById('mgpuCount').value) || 1);
+  const tf = trainFlops(DEMO.N, DEMO.D);
+  const singleH = gpuHours(tf, g);
+  const wall = wallClockHours(singleH, n);
+  const cost = wall * n * g.price;
+  const eff = clusterEfficiency(n);
+
+  document.getElementById('multiDashboard').innerHTML = `
+    <div class="metric"><div class="val">${Math.round(singleH)}</div><div class="lbl">Single-GPU hrs</div></div>
+    <div class="metric ok-m"><div class="val">${Math.round(wall)}</div><div class="lbl">Wall-clock hrs</div></div>
+    <div class="metric"><div class="val">${(eff*100).toFixed(0)}%</div><div class="lbl">Cluster efficiency</div></div>
+    <div class="metric warn-m"><div class="val">$${Math.round(cost).toLocaleString()}</div><div class="lbl">Total cost</div></div>
+  `;
+
+  drawMultiGpuChart(g, singleH, n);
+}
+
+function drawMultiGpuChart(gpu, singleH, nSel) {
+  const canvas = document.getElementById('multiCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.clientWidth || 600;
+  const H = 260;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  const pad = { l: 52, r: 58, t: 28, b: 40 };
+  const plotW = W - pad.l - pad.r;
+  const plotH = H - pad.t - pad.b;
+
+  // Sample GPU counts evenly on a log-ish set, always include selection
+  const counts = [1, 2, 4, 8, 16, 32, 64];
+  if (!counts.includes(nSel)) {
+    counts.push(nSel);
+    counts.sort((a, b) => a - b);
+  }
+
+  const times = counts.map(n => wallClockHours(singleH, n));
+  const costs = counts.map(n => wallClockHours(singleH, n) * n * gpu.price);
+
+  // Even linear scales with headroom
+  const maxTime = Math.max(...times) * 1.1;
+  const maxCost = Math.max(...costs) * 1.15 || 1;
+
+  const xOf = (i) => pad.l + (i / (counts.length - 1)) * plotW;
+  const yTime = (h) => pad.t + plotH - (h / maxTime) * plotH;
+  const yCost = (c) => pad.t + plotH - (c / maxCost) * plotH;
+
+  // Background + grid
+  ctx.fillStyle = '#fafaf9';
+  ctx.fillRect(pad.l, pad.t, plotW, plotH);
+
+  ctx.strokeStyle = '#e7e5e4';
+  ctx.lineWidth = 1;
+  ctx.fillStyle = '#a8a29e';
+  ctx.font = '10px system-ui';
+  const timeTicks = 4;
+  for (let i = 0; i <= timeTicks; i++) {
+    const frac = i / timeTicks;
+    const y = pad.t + plotH * (1 - frac);
+    ctx.beginPath();
+    ctx.moveTo(pad.l, y);
+    ctx.lineTo(pad.l + plotW, y);
+    ctx.stroke();
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#0d9488';
+    ctx.fillText(Math.round(maxTime * frac) + 'h', pad.l - 6, y + 3);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#ea580c';
+    ctx.fillText('$' + Math.round(maxCost * frac).toLocaleString(), pad.l + plotW + 6, y + 3);
+  }
+
+  // Axes
+  ctx.strokeStyle = '#78716c';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(pad.l, pad.t);
+  ctx.lineTo(pad.l, pad.t + plotH);
+  ctx.lineTo(pad.l + plotW, pad.t + plotH);
+  ctx.lineTo(pad.l + plotW, pad.t);
+  ctx.stroke();
+
+  // Cost line (right scale)
+  ctx.strokeStyle = '#ea580c';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  costs.forEach((c, i) => {
+    const x = xOf(i), y = yCost(c);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+  costs.forEach((c, i) => {
+    ctx.fillStyle = '#ea580c';
+    ctx.beginPath();
+    ctx.arc(xOf(i), yCost(c), 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Time line (left scale)
+  ctx.strokeStyle = '#0d9488';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  times.forEach((h, i) => {
+    const x = xOf(i), y = yTime(h);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+  times.forEach((h, i) => {
+    ctx.fillStyle = '#0d9488';
+    ctx.beginPath();
+    ctx.arc(xOf(i), yTime(h), 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Highlight selected # GPUs
+  const selIdx = counts.indexOf(nSel);
+  if (selIdx >= 0) {
+    const sx = xOf(selIdx);
+    ctx.strokeStyle = '#57534e';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(sx, pad.t);
+    ctx.lineTo(sx, pad.t + plotH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Larger markers at selection
+    ctx.fillStyle = '#0d9488';
+    ctx.beginPath();
+    ctx.arc(sx, yTime(times[selIdx]), 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#ea580c';
+    ctx.beginPath();
+    ctx.arc(sx, yCost(costs[selIdx]), 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  // X labels
+  ctx.fillStyle = '#57534e';
+  ctx.font = '10px system-ui';
+  ctx.textAlign = 'center';
+  counts.forEach((n, i) => {
+    ctx.fillText(String(n), xOf(i), pad.t + plotH + 16);
+  });
+  ctx.fillStyle = '#78716c';
+  ctx.fillText('# GPUs →', pad.l + plotW / 2, H - 6);
+
+  // Legend
+  ctx.font = '600 11px system-ui';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#0d9488';
+  ctx.fillRect(pad.l + 8, pad.t - 14, 14, 4);
+  ctx.fillText('Wall-clock (h)', pad.l + 26, pad.t - 10);
+  ctx.fillStyle = '#ea580c';
+  ctx.fillRect(pad.l + 140, pad.t - 14, 14, 4);
+  ctx.fillText('Total cost ($)', pad.l + 158, pad.t - 10);
+}
+
+function checkMulti() {
+  const g = GPUS.meowMax;
+  const tf = trainFlops(DEMO.N, DEMO.D);
+  const singleH = gpuHours(tf, g);
+  const expected = wallClockHours(singleH, 8);
+  const ans = Number(document.getElementById('multiAnswer').value);
+
+  if (Math.abs(ans - Math.round(expected)) <= 2) {
+    state.multiOk = true;
+    markComplete(5);
+    document.getElementById('btn-step5-next').disabled = false;
+    showFeedback('multiFeedback', true, `✓ Correct! ~${Math.round(expected)} hours wall-clock with 8× H100s (single GPU would be ~${Math.round(singleH)} hrs).`);
+  } else {
+    showFeedback('multiFeedback', false, `Not quite. First find single-GPU H100 hours (~${Math.round(singleH)}), then divide by 8 × efficiency (~85%).`);
+  }
+}
+
+/* ─── Step 6: Investor game ─── */
+const GAME = { budget: 2e6, maxHours: 504, minAccuracy: 78 };
+
+function accuracyScore(N, T, ratio) {
+  // All three levers matter. Neglecting params OR context applies a penalty.
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const nScore = clamp((Math.log10(N) - 9.0) / (10.8 - 9.0), 0, 1) * 40;   // ~1B→0, ~63B→40
+  const tScore = clamp((Math.log10(T) - 3.3) / (5.0 - 3.3), 0, 1) * 45;   // ~2K→0, ~100K→45
+  const dataScore = clamp((ratio - 15) / (25 - 15), 0, 1) * 15;           // need ≥~15× tokens/param
+  let score = nScore + tScore + dataScore;
+  if (nScore < 14 || tScore < 16) score *= 0.68;
+  return Math.round(Math.min(100, Math.max(0, score)));
+}
+
+function initGame() {
+  const sel = document.getElementById('gameGpu');
+  const ids = Object.keys(GPUS);
+  sel.innerHTML = ids.map(id => `<option value="${id}">${GPUS[id].name}</option>`).join('');
+  sel.value = 'meowMax';
+  updateGame();
+}
+
+function updateGame() {
+  const N = Math.pow(10, Number(document.getElementById('gameN').value));
+  const L = Math.pow(10, Number(document.getElementById('gameL').value));
+  const ratio = Number(document.getElementById('gameRatio').value);
+  const D = N * ratio;
+  const g = GPUS[document.getElementById('gameGpu').value];
+  const nGpus = Math.max(1, Number(document.getElementById('gameGpus').value) || 1);
+
+  document.getElementById('gameNLabel').textContent = fmtNum(N);
+  document.getElementById('gameLLabel').textContent = fmtNum(L);
+  document.getElementById('gameRatioLabel').textContent = ratio + '×';
+
+  const tf = trainFlops(N, D);
+  const singleH = gpuHours(tf, g);
+  const wall = wallClockHours(singleH, nGpus);
+  const cost = wall * nGpus * g.price;
+  const acc = accuracyScore(N, L, ratio);
+  const inf = infSeconds(infFlops(N, L), g);
+
+  const timeOk = wall <= GAME.maxHours;
+  const costOk = cost <= GAME.budget;
+  const accOk = acc >= GAME.minAccuracy;
+
+  document.getElementById('gameDashboard').innerHTML = `
+    <div class="metric ${accOk ? 'ok-m' : 'warn-m'}"><div class="val">${acc}</div><div class="lbl">Accuracy (need ${GAME.minAccuracy})</div></div>
+    <div class="metric ${timeOk ? 'ok-m' : 'danger'}"><div class="val">${Math.round(wall)}h</div><div class="lbl">Train time</div></div>
+    <div class="metric ${costOk ? 'ok-m' : 'danger'}"><div class="val">$${(cost/1e6).toFixed(2)}M</div><div class="lbl">Cost</div></div>
+    <div class="metric"><div class="val">${fmtTime(inf)}</div><div class="lbl">Inference</div></div>
+  `;
+
+  const meter = document.getElementById('accuracyMeter');
+  meter.style.width = acc + '%';
+  meter.style.background = accOk ? 'var(--success)' : (acc >= 50 ? 'var(--warn)' : 'var(--danger)');
+
+  document.getElementById('gameFeedback').className = 'feedback';
+}
+
+function launchTraining() {
+  const N = Math.pow(10, Number(document.getElementById('gameN').value));
+  const L = Math.pow(10, Number(document.getElementById('gameL').value));
+  const ratio = Number(document.getElementById('gameRatio').value);
+  const D = N * ratio;
+  const g = GPUS[document.getElementById('gameGpu').value];
+  const nGpus = Math.max(1, Number(document.getElementById('gameGpus').value) || 1);
+
+  const tf = trainFlops(N, D);
+  const wall = wallClockHours(gpuHours(tf, g), nGpus);
+  const cost = wall * nGpus * g.price;
+  const acc = accuracyScore(N, L, ratio);
+
+  const fb = document.getElementById('gameFeedback');
+  fb.className = 'feedback show';
+
+  const timeOk = wall <= GAME.maxHours;
+  const costOk = cost <= GAME.budget;
+  const accOk = acc >= GAME.minAccuracy;
+
+  if (accOk && timeOk && costOk) {
+    markComplete(6);
+    document.getElementById('winScreen').style.display = 'block';
+    fb.className = 'feedback show ok';
+    fb.textContent = '🎉 All constraints met! PawGPT launches successfully.';
+  } else {
+    document.getElementById('winScreen').style.display = 'none';
+    fb.className = 'feedback show err';
+    const issues = [];
+    if (!accOk) issues.push(`Accuracy ${acc} is below ${GAME.minAccuracy} — raise params, context window, and/or tokens-per-param together (neglecting one hurts a lot).`);
+    if (!timeOk) issues.push(`Training ${Math.round(wall)}h exceeds ${GAME.maxHours}h — add GPUs or reduce model/data size.`);
+    if (!costOk) issues.push(`Cost $${Math.round(cost).toLocaleString()} exceeds $${GAME.budget.toLocaleString()} — fewer GPUs, cheaper hardware, or smaller model.`);
+    fb.innerHTML = issues.join('<br>');
+  }
+}
+
+function resetGame() {
+  document.getElementById('winScreen').style.display = 'none';
+  document.getElementById('gameN').value = 9.85;
+  document.getElementById('gameL').value = 3.6;
+  document.getElementById('gameRatio').value = 20;
+  document.getElementById('gameGpus').value = 32;
+  updateGame();
+}
+
+/* ─── Init ─── */
+buildProgress();
+updateScaling();
+document.getElementById('demoTrainFlops').textContent = fmtHuman(trainFlops(DEMO.N, DEMO.D));
+document.getElementById('demoInfFlops').textContent = fmtHuman(infFlops(DEMO.N, DEMO.T));
+
+/* ─── Floating calculator ─── */
+const calcState = { expr: '', display: '0', justEval: false };
+
+function toggleCalc() {
+  const panel = document.getElementById('calcPanel');
+  const fab = document.getElementById('calcFab');
+  const open = panel.classList.toggle('open');
+  fab.classList.toggle('open', open);
+  fab.title = open ? 'Close calculator' : 'Open calculator';
+  fab.setAttribute('aria-label', fab.title);
+}
+
+function calcRender() {
+  document.getElementById('calcExpr').textContent = calcState.expr;
+  document.getElementById('calcValue').textContent = calcState.display;
+}
+
+function calcClear() {
+  calcState.expr = '';
+  calcState.display = '0';
+  calcState.justEval = false;
+  calcRender();
+}
+
+function calcBack() {
+  if (calcState.justEval) {
+    calcClear();
+    return;
+  }
+  if (calcState.expr.length) {
+    calcState.expr = calcState.expr.slice(0, -1);
+    calcState.display = calcState.expr || '0';
+  }
+  calcRender();
+}
+
+function calcInput(ch) {
+  if (calcState.justEval) {
+    if (/[0-9.e(]/.test(ch)) {
+      calcState.expr = '';
+    }
+    calcState.justEval = false;
+  }
+  if (ch === 'e') {
+    const last = calcState.expr.slice(-1);
+    if (!/[0-9.]/.test(last)) return;
+  }
+  calcState.expr += ch;
+  calcState.display = calcState.expr;
+  calcRender();
+}
+
+function calcFormat(n) {
+  if (!Number.isFinite(n)) return 'Error';
+  const abs = Math.abs(n);
+  if (abs !== 0 && (abs >= 1e9 || abs < 1e-4)) {
+    return n.toExponential(6).replace(/\.?0+e/, 'e').replace(/e\+/, 'e');
+  }
+  return Number(n.toPrecision(12)).toString();
+}
+
+function calcEquals() {
+  let src = calcState.expr.trim();
+  if (!src) return;
+  src = src.replace(/\^/g, '**');
+  if (!/^[0-9+\-*/().eE\s*]+$/.test(src)) {
+    calcState.display = 'Error';
+    calcState.justEval = true;
+    calcRender();
+    return;
+  }
+  try {
+    const result = Function('"use strict"; return (' + src + ')')();
+    if (typeof result !== 'number' || !Number.isFinite(result)) throw new Error('bad');
+    calcState.display = calcFormat(result);
+    calcState.expr = String(result);
+    calcState.justEval = true;
+  } catch (_) {
+    calcState.display = 'Error';
+    calcState.justEval = true;
+  }
+  calcRender();
+}
+
+document.addEventListener('keydown', (ev) => {
+  const panel = document.getElementById('calcPanel');
+  if (!panel || !panel.classList.contains('open')) return;
+  const tag = (ev.target && ev.target.tagName) || '';
+  if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+
+  const k = ev.key;
+  if (k >= '0' && k <= '9') { calcInput(k); ev.preventDefault(); }
+  else if (k === '.' || k === '+' || k === '-' || k === '*' || k === '/' || k === '(' || k === ')') { calcInput(k); ev.preventDefault(); }
+  else if (k === '^') { calcInput('^'); ev.preventDefault(); }
+  else if (k === 'e' || k === 'E') { calcInput('e'); ev.preventDefault(); }
+  else if (k === 'Enter' || k === '=') { calcEquals(); ev.preventDefault(); }
+  else if (k === 'Backspace') { calcBack(); ev.preventDefault(); }
+  else if (k === 'Escape') { toggleCalc(); ev.preventDefault(); }
+  else if (k === 'Delete') { calcClear(); ev.preventDefault(); }
+});
+
+calcRender();
+</script>
+</body>
+</html>
