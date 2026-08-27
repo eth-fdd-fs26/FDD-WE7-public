@@ -1,5 +1,5 @@
 """Presentation, plotting & quiz helpers for the WE7 notebook 02:
-"One backbone, many tasks — parameter-efficient fine-tuning".
+"One backbone, many tasks: parameter-efficient fine-tuning".
 
 Same idea as WE7's `sched_viz` and WE3's `dp_viz`: every HTML/CSS
 illustration, interactive widget and quiz *answer key* lives here, out of the
@@ -22,7 +22,7 @@ import matplotlib.pyplot as _plt
 from IPython.display import HTML, display
 
 # ===========================================================================
-#  §0  Palette — one place, so every picture colours the same thing the same
+#  §0  Palette: one place, so every picture colours the same thing the same
 # ===========================================================================
 # Every widget paints its own white surface, so it must paint its own text
 # colour too: in a dark-themed notebook the inherited colour is near-white
@@ -258,7 +258,7 @@ def _nq_render(title, questions,
 
 
 # ===========================================================================
-#  §2  Part 0 — one model per task, and what that costs to store
+#  §2  Part 0. one model per task, and what that costs to store
 # ===========================================================================
 _TASK_TINT = ["#4a5bd0", "#c9548f", "#2e9e7a", "#e0a500", "#8d6ec9"]
 
@@ -358,7 +358,7 @@ def storage_scenario(base_parameter_count, number_of_tasks,
 
 
 # ===========================================================================
-#  §3  The repeated dashboard — drawn again after every method
+#  §3  The repeated dashboard: drawn again after every method
 # ===========================================================================
 #  A record is a plain dict built in the notebook, in full view:
 #      method, total_params, trainable_params, train_state_bytes, ckpt_bytes,
@@ -497,7 +497,7 @@ def dashboard(rec, baseline=None, title=None):
 
 
 # ===========================================================================
-#  §4  Plots — decision boundaries, sweeps, the Pareto view, the sparse grid
+#  §4  Plots: decision boundaries, sweeps, the Pareto view, the sparse grid
 # ===========================================================================
 _CMAP_PTS = ["#3f5bd0", "#e0721e"]
 
@@ -688,7 +688,7 @@ def diff_grid(delta, threshold, width=64,
 
 
 # ===========================================================================
-#  §5  One interactive picture — the LoRA rank
+#  §5  One interactive picture: the LoRA rank
 # ===========================================================================
 #  Plain HTML + JS with the data injected from Python, so they survive Colab,
 #  Jupyter and a static export. Nothing is computed in the browser except the
@@ -1194,7 +1194,7 @@ def number_quiz(key):
 
 
 # ===========================================================================
-#  §8  Final boss — timed true/false flash quiz with lives
+#  §8  Final boss: timed true/false flash quiz with lives
 # ===========================================================================
 # Balanced pool (14 true / 14 false), phrased so neither answer is given away
 # by the wording, and so that no statement answers another one.
