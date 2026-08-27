@@ -1,0 +1,4 @@
+# WE7 notebook 03 — cluster scheduling. Everything is integer arithmetic on a
+# simulated cluster: no GPU, no torch, no Slurm installation required.
+numpy>=1.24
+ipython>=8.0
