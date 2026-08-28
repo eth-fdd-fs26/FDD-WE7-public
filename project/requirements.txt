@@ -1,0 +1,5 @@
+# One Model, Four Banks — the whole project runs on a Colab CPU.
+# No torch, no sklearn, no privacy library: the privacy accountant is fifteen lines
+# in src/fedcore.py.
+numpy>=1.24
+matplotlib>=3.7
